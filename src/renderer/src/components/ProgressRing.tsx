@@ -20,9 +20,17 @@ export function ProgressRing({
   const clamped = Math.min(1, Math.max(0, progress))
   const offset = circumference * (1 - clamped)
 
+  // Responsive: clamp to viewport on small screens, keep exact size on desktop
+  const responsiveStyle = {
+    width: `min(${String(size)}px, 72vw)`,
+    height: `min(${String(size)}px, 72vw)`,
+    maxWidth: `${String(size)}px`,
+    maxHeight: `${String(size)}px`
+  } as React.CSSProperties
+
   return (
-    <div className="ring" style={{ width: size, height: size }}>
-      <svg width={size} height={size} role="img">
+    <div className="ring" style={responsiveStyle}>
+      <svg viewBox={`0 0 ${String(size)} ${String(size)}`} width="100%" height="100%" role="img" style={{ display: 'block' }}>
         <circle
           cx={size / 2}
           cy={size / 2}

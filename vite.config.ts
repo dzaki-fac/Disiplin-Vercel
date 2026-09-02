@@ -18,6 +18,15 @@ export default defineConfig({
     sourcemap: false
   },
   server: {
-    port: 5173
+    host: '0.0.0.0',
+    port: 5173,
+    strictPort: false,
+    cors: true
+  },
+  preview: {
+    host: '0.0.0.0',
+    port: 4173,
+    strictPort: false,
+    cors: true
   }
 })

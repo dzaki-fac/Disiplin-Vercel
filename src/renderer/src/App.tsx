@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AppProvider } from './lib/store'
 import { useStore } from './lib/storeContext'
 import { TopNav } from './components/TopNav'
+import { BottomNav } from './components/BottomNav'
 import { TimerView } from './components/TimerView'
 import { TasksView } from './components/TasksView'
 import { HistoryView } from './components/HistoryView'
@@ -59,6 +60,7 @@ function Shell(): React.JSX.Element {
           {view === 'stats' && <StatsView />}
         </main>
       </div>
+      <BottomNav active={view} onChange={setView} />
       <SessionCompletePopup />
     </div>
   )

@@ -23,6 +23,8 @@
 body {
   overflow: hidden;
   user-select: none;
+  /* prevent elastic bounce leaking bg */
+  overscroll-behavior: none;
 }
 
 input,
@@ -37,6 +39,8 @@ button {
   background: none;
   border: none;
   padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 :focus-visible {
@@ -48,7 +52,11 @@ button {
   position: relative;
   display: block;
   height: 100vh;
+  height: 100dvh;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .scroll-wrap {
@@ -2204,51 +2212,587 @@ button {
   background-clip: padding-box;
 }
 
+/* ---------- Bottom navigation (mobile) ---------- */
+
+.bottom-nav {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    display: flex;
+    align-items: stretch;
+    justify-content: space-around;
+    gap: 4px;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border-top: 1px solid var(--fog);
+    box-shadow: 0 -4px 24px rgba(20, 20, 20, 0.06);
+  }
+
+  .bottom-nav__item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-height: 52px;
+    padding: 6px 4px;
+    border-radius: 12px;
+    color: var(--slate);
+    transition:
+      color 150ms var(--ease),
+      background-color 150ms var(--ease);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .bottom-nav__item:active {
+    background: var(--fog);
+  }
+
+  .bottom-nav__icon {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+  }
+
+  .bottom-nav__label {
+    font-family: var(--font-chrome);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .bottom-nav__item--active {
+    color: var(--ember);
+    background: rgba(212, 48, 8, 0.07);
+  }
+}
+
 /* ---------- Responsive ---------- */
 
+/* Tablet & small desktop */
+@media (max-width: 880px) {
+  .timer-main {
+    gap: 36px;
+    padding: 32px 24px;
+  }
+
+  .timer-main__side {
+    min-width: 200px;
+    max-width: 240px;
+  }
+
+  .settings-popover {
+    width: min(380px, calc(100vw - 48px));
+  }
+}
+
+/* Mobile landscape & large phones */
 @media (max-width: 720px) {
   .topnav {
-    gap: 20px;
-    padding: 0 16px;
+    gap: 12px;
+    padding: 0 14px;
+    height: 56px;
   }
 
   .nav {
-    gap: 16px;
+    gap: 12px;
   }
 
   .topnav__right {
+    gap: 8px;
+  }
+
+  .sync-indicator__label {
     display: none;
   }
 
   .view {
-    padding: 48px 16px 72px;
+    padding: 20px 16px 96px;
+  }
+
+  .view__header {
+    margin-bottom: 20px;
+  }
+
+  .view__header h1 {
+    font-size: 22px;
+  }
+
+  .timer-view {
+    gap: 20px;
   }
 
   .timer-main {
     flex-direction: column;
-    gap: 32px;
+    gap: 28px;
+    padding: 28px 20px;
   }
 
   .timer-main__side {
     align-items: center;
     text-align: center;
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    gap: 20px;
+  }
+
+  .session-now {
+    align-items: center;
+    text-align: center;
+  }
+
+  .session-now__quote {
+    max-width: 100%;
+    text-align: center;
   }
 
   .controls {
     align-items: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px 18px;
+  }
+
+  .controls .cta {
+    min-height: 44px;
+    padding: 8px 4px;
   }
 
   .stat-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 24px;
+    gap: 16px;
+    margin-bottom: 28px;
   }
 
   .settings__grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
   }
 
   .ring__clock {
     font-size: 44px;
+  }
+
+  .add-task {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .add-task .cta {
+    align-self: flex-start;
+  }
+
+  .task-manager {
+    padding: 18px 16px;
+  }
+
+  .task-manager__list,
+  .task-manager__add {
+    margin-left: 0;
+  }
+
+  .task-manager__group-head {
+    flex-wrap: wrap;
+  }
+
+  .session-manager {
+    padding-top: 20px;
+  }
+
+  .heatmap__scroll {
+    padding: 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .week-area-chart,
+  .month-cal,
+  .task-bars {
+    padding: 12px;
+  }
+}
+
+/* Phones */
+@media (max-width: 640px) {
+  .topnav {
+    gap: 10px;
+    height: 54px;
+    padding: 0 12px;
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* Hide desktop nav — replaced by bottom-nav */
+  .topnav .nav {
+    display: none;
+  }
+
+  .brand__name {
+    font-size: 18px;
+  }
+
+  .topnav__right {
+    margin-left: auto;
+    gap: 8px;
+  }
+
+  .sync-indicator {
+    padding: 6px 10px;
+    font-size: 11px;
+    min-height: 34px;
+  }
+
+  .topnav__dday {
+    min-height: 34px;
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .topnav__dday-popup {
+    right: -8px;
+    width: min(280px, calc(100vw - 24px));
+  }
+
+  .view {
+    padding: 18px 14px calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .view__header:has(.view-edit-toggle) {
+    padding-right: 44px;
+  }
+
+  .view__header--actions {
+    padding-right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .view__header--actions .view__actions {
+    position: static;
+    display: flex;
+    gap: 8px;
+  }
+
+  .mode-tabs {
+    gap: 18px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .mode-tab {
+    font-size: 12px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 2px;
+  }
+
+  .timer-main {
+    padding: 24px 16px 20px;
+    gap: 24px;
+  }
+
+  .settings-toggle {
+    width: 40px;
+    height: 40px;
+    top: 12px;
+    right: 12px;
+  }
+
+  .settings-popover {
+    top: 56px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    padding: 20px 16px;
+  }
+
+  .settings__grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .settings__grid .field input {
+    font-size: 16px;
+    min-height: 44px;
+  }
+
+  .ring__clock {
+    font-size: clamp(36px, 11vw, 44px);
+  }
+
+  .ring__mode {
+    font-size: 9px;
+  }
+
+  .session-manager__row,
+  .task,
+  .session-row {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+
+  /* Always show actions on touch devices */
+  .session-manager__actions,
+  .session-row__actions {
+    opacity: 1 !important;
+  }
+
+  .session-manager__actions .icon-btn,
+  .session-row__actions .icon-btn,
+  .task__delete {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+  }
+
+  .session-manager__new {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .session-manager__new input {
+    font-size: 16px;
+    min-height: 44px;
+  }
+
+  .session-manager__new .cta,
+  .session-manager__edit .cta {
+    min-height: 44px;
+  }
+
+  .task-manager__item {
+    padding: 10px;
+  }
+
+  .task-manager__handle {
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+  }
+
+  .task__title {
+    font-size: 15px;
+    white-space: normal;
+    line-height: 1.4;
+  }
+
+  .session-row__title {
+    font-size: 14px;
+    white-space: normal;
+    line-height: 1.35;
+  }
+
+  .history-group__head h2 {
+    font-size: 18px;
+  }
+
+  .view-edit-toggle {
+    width: 40px;
+    height: 40px;
+  }
+
+  .session-edit {
+    width: calc(100vw - 24px);
+    max-width: 360px;
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    padding: 20px 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .session-edit input,
+  .session-edit select,
+  .session-edit .custom-select__trigger,
+  .session-edit .date-picker__trigger {
+    font-size: 16px;
+    min-height: 44px;
+  }
+
+  .session-edit__times {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .session-edit__footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .session-edit__actions {
+    justify-content: stretch;
+  }
+
+  .session-edit__actions .cta {
+    flex: 1;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .date-picker__popup {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: min(280px, calc(100vw - 32px));
+  }
+
+  .topnav__dday-popup .date-picker__popup {
+    left: auto;
+    right: 0;
+    transform: none;
+  }
+
+  .month-cal__day {
+    height: 46px;
+  }
+
+  .panel__head h2 {
+    font-size: 20px;
+  }
+
+  .cta {
+    min-height: 44px;
+  }
+
+  .icon-btn,
+  .icon-btn--bordered {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  /* Make entire app bottom-padded for bottom nav */
+  .content {
+    padding-bottom: 0;
+  }
+
+  .app {
+    padding-bottom: 0;
+  }
+}
+
+/* Small phones */
+@media (max-width: 380px) {
+  .topnav {
+    padding: 0 10px;
+  }
+
+  .brand {
+    gap: 8px;
+  }
+
+  .brand__name {
+    font-size: 17px;
+  }
+
+  .view {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .timer-main {
+    padding: 20px 14px;
+  }
+
+  .stat-card__value {
+    font-size: 28px;
+  }
+
+  .mode-tabs {
+    gap: 14px;
+  }
+
+  .topnav__dday {
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+
+  .sync-indicator {
+    padding: 5px 8px;
+  }
+
+  .bottom-nav__label {
+    font-size: 9px;
+  }
+
+  .bottom-nav__item {
+    min-height: 52px;
+    padding: 4px 2px;
+  }
+}
+
+/* Very small */
+@media (max-width: 340px) {
+  .ring__clock {
+    font-size: 32px;
+  }
+
+  .view__header h1 {
+    font-size: 20px;
+  }
+}
+
+/* Touch-specific: improve tap targets & show hidden actions */
+@media (hover: none) and (pointer: coarse) {
+  .session-manager__actions,
+  .session-row__actions {
+    opacity: 1;
+  }
+
+  .nav-item,
+  .mode-tab,
+  .cta,
+  .icon-btn {
+    min-height: 44px;
+  }
+
+  .task:hover,
+  .session-manager__row:hover,
+  .session-row:hover {
+    background: transparent;
+  }
+
+  .task:active,
+  .session-manager__row:active,
+  .session-row:active {
+    background: var(--fog);
+  }
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .view,
+  .complete-overlay,
+  .complete-card,
+  .stat-card__flame,
+  .flame__svg {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* High contrast / forced colors */
+@media (forced-colors: active) {
+  .ring circle {
+    forced-color-adjust: auto;
   }
 }
 
