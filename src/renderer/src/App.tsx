@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { AuthProvider } from './lib/auth'
 import { AppProvider } from './lib/store'
 import { useStore } from './lib/storeContext'
 import { TopNav } from './components/TopNav'
@@ -68,9 +69,11 @@ function Shell(): React.JSX.Element {
 
 function App(): React.JSX.Element {
   return (
-    <AppProvider>
-      <Shell />
-    </AppProvider>
+    <AuthProvider>
+      <AppProvider>
+        <Shell />
+      </AppProvider>
+    </AuthProvider>
   )
 }
 

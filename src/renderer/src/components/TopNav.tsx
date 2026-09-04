@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ViewId } from '../types'
+import { useAuth } from '../lib/authContext'
+import { AuthModal } from './AuthModal'
 import { DatePicker } from './DatePicker'
-import { HistoryIcon, StatsIcon, TasksIcon, TimerIcon } from './icons'
+import { HistoryIcon, StatsIcon, TasksIcon, TimerIcon, UserIcon } from './icons'
 import { SyncIndicator } from './SyncIndicator'
 
 interface TopNavProps {
@@ -45,6 +47,21 @@ function saveDDay(val: string | null): void {
 export function TopNav({ active, onChange }: TopNavProps): React.JSX.Element {
   const [dday, setDday] = useState<string | null>(loadDDay)
   const [open, setOpen] = useState(false)
+  const { user, loading: authLoading, signOut } = useAuth()
+  const [authOpen, setAuthOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
+  const menuRef = useRef<HTMLDivElement | null>(null)
+
+  // tutup menu akun saat klik di luar
+  useEffect(() => {
+    if (!menuOpen) return
+    const onDown = (e: MouseEvent): void => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [menuOpen])
 
   const ddayTs = dday ? new Date(dday + 'T00:00:00').getTime() : null
   const diff = ddayTs !== null ? daysUntil(new Date(ddayTs)) : null
@@ -83,6 +100,47 @@ export function TopNav({ active, onChange }: TopNavProps): React.JSX.Element {
       </nav>
       <div className="topnav__right" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <SyncIndicator />
+        {!authLoading &&
+          (user ? (
+            <div className="account-wrap" ref={menuRef}>
+              <button
+                type="button"
+                className="account-avatar"
+                onClick={() => setMenuOpen((o) => !o)}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                title={user.email ?? 'Akun'}
+              >
+                {(user.email?.trim()?.[0] ?? '?').toUpperCase()}
+              </button>
+              {menuOpen && (
+                <div className="account-menu" role="menu">
+                  <p className="account-menu__email" title={user.email ?? ''}>
+                    {user.email}
+                  </p>
+                  <button
+                    type="button"
+                    className="cta cta--danger account-menu__logout"
+                    disabled={signingOut}
+                    onClick={() => {
+                      setSigningOut(true)
+                      void signOut().finally(() => {
+                        setSigningOut(false)
+                        setMenuOpen(false)
+                      })
+                    }}
+                  >
+                    {signingOut ? 'Keluar...' : 'Keluar →'}
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button type="button" className="account-btn" onClick={() => setAuthOpen(true)}>
+              <UserIcon size={14} />
+              Masuk
+            </button>
+          ))}
         <button type="button" className="topnav__dday" onClick={() => setOpen((o) => !o)}>
           {diff !== null ? (
             diff > 0 ? (
@@ -119,6 +177,7 @@ export function TopNav({ active, onChange }: TopNavProps): React.JSX.Element {
           </div>
         )}
       </div>
+      {authOpen && <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />}
     </header>
   )
 }

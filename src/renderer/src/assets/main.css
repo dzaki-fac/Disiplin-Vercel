@@ -255,6 +255,155 @@ button {
   text-decoration: underline;
 }
 
+/* ---------- Account ---------- */
+
+.account-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--ash);
+  border-radius: var(--radius);
+  background: transparent;
+  font-size: 11px;
+  font-family: inherit;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--slate);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.account-btn:hover {
+  border-color: var(--ember);
+  color: var(--ember);
+}
+
+.account-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.account-avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  flex: none;
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--ember);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 150ms var(--ease);
+}
+
+.account-avatar:hover {
+  filter: brightness(0.92);
+}
+
+.account-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 100;
+  min-width: 220px;
+  max-width: min(280px, calc(100vw - 24px));
+  padding: 12px;
+  background: var(--paper);
+  border: 1px solid var(--ash);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgb(20 20 20 / 0.12);
+}
+
+.account-menu__email {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-menu__logout {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* ---------- Auth modal ---------- */
+
+.auth-modal {
+  gap: 12px;
+}
+
+.auth-sub {
+  margin: 0;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--slate);
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--fog);
+  border-radius: var(--radius);
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 8px 4px;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--slate);
+  cursor: pointer;
+  transition: background-color 150ms var(--ease), color 150ms var(--ease);
+}
+
+.auth-tab.is-active {
+  background: var(--paper);
+  color: var(--ember);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.auth-error {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: rgb(212 48 8 / 0.08);
+  color: var(--ember);
+  font-size: 13px;
+}
+
+.auth-notice {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: var(--fog);
+  color: var(--ink);
+  font-size: 13px;
+}
+
 /* ---------- Content ---------- */
 
 .content {
@@ -327,6 +476,11 @@ button {
   place-items: center;
   width: 36px;
   height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  flex: none;
+  aspect-ratio: 1 / 1;
+  padding: 0;
   border: 1px solid var(--ash);
   border-radius: 50%;
   color: var(--slate);
@@ -411,7 +565,11 @@ button {
   place-items: center;
   width: 24px;
   height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  flex: none;
   flex-shrink: 0;
+  aspect-ratio: 1 / 1;
   padding: 0;
   color: var(--slate);
   background: transparent;
@@ -650,6 +808,11 @@ button {
   place-items: center;
   width: 28px;
   height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  flex: none;
+  aspect-ratio: 1 / 1;
+  padding: 0;
   border: none;
   border-radius: 50%;
   background: transparent;
@@ -670,6 +833,9 @@ button {
 .icon-btn--bordered {
   width: 32px;
   height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  aspect-ratio: 1 / 1;
   border: 1px solid var(--ash);
 }
 
@@ -895,6 +1061,11 @@ button {
   place-items: center;
   width: 36px;
   height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  flex: none;
+  aspect-ratio: 1 / 1;
+  padding: 0;
   border: 1px solid var(--ash);
   border-radius: 50%;
   color: var(--slate);
@@ -1407,7 +1578,9 @@ button {
   display: grid;
   place-items: center;
   padding: 20px;
-  background: rgb(17 17 17 / 0.35);
+  background: rgb(17 17 17 / 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
 }
 
 .session-edit {
@@ -2462,6 +2635,21 @@ button {
     font-size: 11px;
   }
 
+  .account-btn {
+    min-height: 34px;
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .account-avatar {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    aspect-ratio: 1 / 1;
+    font-size: 16px;
+  }
+
   .topnav__dday-popup {
     right: -8px;
     width: min(280px, calc(100vw - 24px));
@@ -2511,6 +2699,9 @@ button {
   .settings-toggle {
     width: 40px;
     height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    aspect-ratio: 1 / 1;
     top: 12px;
     right: 12px;
   }
@@ -2560,6 +2751,8 @@ button {
     width: 36px;
     height: 36px;
     min-width: 36px;
+    min-height: 36px;
+    aspect-ratio: 1 / 1;
   }
 
   .session-manager__new {
@@ -2608,6 +2801,9 @@ button {
   .view-edit-toggle {
     width: 40px;
     height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    aspect-ratio: 1 / 1;
   }
 
   .session-edit {
@@ -2675,8 +2871,11 @@ button {
 
   .icon-btn,
   .icon-btn--bordered {
+    width: 40px;
+    height: 40px;
     min-width: 40px;
     min-height: 40px;
+    aspect-ratio: 1 / 1;
   }
 
   /* Make entire app bottom-padded for bottom nav */
@@ -2759,10 +2958,13 @@ button {
 
   .nav-item,
   .mode-tab,
-  .cta,
-  .icon-btn {
+  .cta {
     min-height: 44px;
   }
+
+  /* NOTE: .icon-btn / .view-edit-toggle / .settings-toggle sengaja TIDAK ikut
+     min-height 44px — mereka lingkaran (aspect-ratio 1/1), ikut aturan itu
+     bikin lonjong di mobile (tinggi 44px vs lebar 28-40px). */
 
   .task:hover,
   .session-manager__row:hover,
@@ -2937,4 +3139,25 @@ button {
   50% {
     filter: drop-shadow(0 0 9px rgb(231 163 58 / 0.75)) drop-shadow(0 0 20px rgb(212 48 8 / 0.55));
   }
+}
+
+/* ---------- Safety: keep circle buttons round on all screens ---------- */
+.icon-btn,
+.icon-btn--bordered,
+.view-edit-toggle,
+.settings-toggle,
+.task-manager__collapse,
+.account-avatar {
+  flex: none;
+  align-self: center;
+  aspect-ratio: 1 / 1;
+  box-sizing: border-box;
+}
+
+.icon-btn svg,
+.view-edit-toggle svg,
+.settings-toggle svg,
+.task-manager__collapse svg {
+  flex: none;
+  display: block;
 }

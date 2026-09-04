@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { FocusSession, SessionItem, Task, TimerMode, TimerStage, TimerState } from '../types'
 import { defaultSettings, defaultTimer, durationFor } from './constants'
 import { StoreContext, type CompletionInfo } from './storeContext'
+import { useAuth } from './authContext'
 import { beep, clickPrimary, isToday, pauseBeep, uid } from './utils'
 import { SEED_SESSIONS, SEED_TASK, SEED_TASK_ID, TRAINING_TASKS } from './seed'
 import {
+  clearLocalUserData,
   fetchSessionList,
   fetchSessions,
   fetchTasks,
@@ -146,6 +148,9 @@ export function AppProvider({ children }: { children: ReactNode }): React.JSX.El
   })
   const [now, setNow] = useState(() => Date.now())
   const [completion, setCompletion] = useState<CompletionInfo | null>(null)
+  // Akun: tamu (user null) murni pakai localStorage; login -> data milik user_id tersebut.
+  const { user } = useAuth()
+  const userId = user?.id ?? null
 
   const settingsRef = useRef(settings)
   const timerRef = useRef(timer)
@@ -168,8 +173,37 @@ export function AppProvider({ children }: { children: ReactNode }): React.JSX.El
     tasksRef.current = tasks
   }, [tasks])
 
-  // --- Supabase: initial load (remote -> local, atau local -> remote kalau remote kosong) ---
+  // --- Bersihkan sisa data akun lama saat logout / ganti akun ---
+  // Tanpa ini, state in-memory tetap menampung data user sebelumnya walau sudah
+  // logout (bug: database sebelumnya masih keload). Effect ini harus jalan
+  // SEBELUM effect initial-load di bawah, supaya fetch berikutnya tidak membaca
+  // tasksRef/sessionsRef basi lalu mem-push-nya ke akun yang baru.
+  const prevUserIdRef = useRef<string | null | undefined>(undefined)
   useEffect(() => {
+    const prev = prevUserIdRef.current
+    prevUserIdRef.current = userId
+    if (prev === undefined) return // mount pertama: jangan hapus data tamu
+    if (prev === userId) return
+    if (prev === null) return // tamu -> login: biarkan migrasi lokal->remote yang urus
+    // logout (A -> null) atau ganti akun (A -> B): buang data A dari memori + disk
+    tasksRef.current = []
+    sessionsRef.current = []
+    sessionListRef.current = []
+    setTasks([])
+    setSessions([])
+    setSessionList([])
+    setWeekNames({})
+    setGroupOrder([])
+    setCompletion(null)
+    setTimer((t) => (t.activeSessionTitle ? { ...t, activeSessionTitle: '' } : t))
+    clearLocalUserData()
+  }, [userId])
+
+  // --- Supabase: initial load (remote -> local, atau local -> remote kalau remote kosong) ---
+  // Hanya jalan saat login. Tamu (userId null) -> skip, tetap pakai localStorage.
+  // Jalan ulang setiap ganti akun biar data selalu milik user yang sedang masuk.
+  useEffect(() => {
+    if (!userId) return
     let cancelled = false
     void (async () => {
       try {
@@ -201,32 +235,46 @@ export function AppProvider({ children }: { children: ReactNode }): React.JSX.El
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [userId])
 
   // Realtime sync antar device (butuh Realtime enabled di Supabase Dashboard > Database > Realtime)
+  // Hanya untuk user yang login, dan di-filter per user_id biar tidak terima data orang lain.
   useEffect(() => {
+    if (!userId) return
     const ch = supabase
-      .channel('disiplin-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
-        void fetchTasks()
-          .then((t) => setTasks(t.map((x, i) => ({ ...x, order: x.order ?? i }))))
-          .catch(() => {})
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'sessions' }, () => {
-        void fetchSessions()
-          .then((s) => setSessions(s))
-          .catch(() => {})
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'session_list' }, () => {
-        void fetchSessionList()
-          .then((l) => setSessionList(l))
-          .catch(() => {})
-      })
+      .channel(`disiplin-sync-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${userId}` },
+        () => {
+          void fetchTasks()
+            .then((t) => setTasks(t.map((x, i) => ({ ...x, order: x.order ?? i }))))
+            .catch(() => {})
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'sessions', filter: `user_id=eq.${userId}` },
+        () => {
+          void fetchSessions()
+            .then((s) => setSessions(s))
+            .catch(() => {})
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'session_list', filter: `user_id=eq.${userId}` },
+        () => {
+          void fetchSessionList()
+            .then((l) => setSessionList(l))
+            .catch(() => {})
+        }
+      )
       .subscribe()
     return () => {
       void supabase.removeChannel(ch)
     }
-  }, [])
+  }, [userId])
 
   // Offline -> online auto-flush (pending queue di supabase.ts)
   useEffect(() => {
