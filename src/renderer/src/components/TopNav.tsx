@@ -3,7 +3,7 @@ import type { ViewId } from '../types'
 import { useAuth } from '../lib/authContext'
 import { AuthModal } from './AuthModal'
 import { DatePicker } from './DatePicker'
-import { HistoryIcon, StatsIcon, TasksIcon, TimerIcon, UserIcon } from './icons'
+import { HistoryIcon, StatsIcon, TasksIcon, TimerIcon, UserIcon, CogIcon } from './icons'
 import { SyncIndicator } from './SyncIndicator'
 
 interface TopNavProps {
@@ -100,47 +100,6 @@ export function TopNav({ active, onChange }: TopNavProps): React.JSX.Element {
       </nav>
       <div className="topnav__right" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <SyncIndicator />
-        {!authLoading &&
-          (user ? (
-            <div className="account-wrap" ref={menuRef}>
-              <button
-                type="button"
-                className="account-avatar"
-                onClick={() => setMenuOpen((o) => !o)}
-                aria-haspopup="menu"
-                aria-expanded={menuOpen}
-                title={user.email ?? 'Akun'}
-              >
-                {(user.email?.trim()?.[0] ?? '?').toUpperCase()}
-              </button>
-              {menuOpen && (
-                <div className="account-menu" role="menu">
-                  <p className="account-menu__email" title={user.email ?? ''}>
-                    {user.email}
-                  </p>
-                  <button
-                    type="button"
-                    className="cta cta--danger account-menu__logout"
-                    disabled={signingOut}
-                    onClick={() => {
-                      setSigningOut(true)
-                      void signOut().finally(() => {
-                        setSigningOut(false)
-                        setMenuOpen(false)
-                      })
-                    }}
-                  >
-                    {signingOut ? 'Keluar...' : 'Keluar →'}
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <button type="button" className="account-btn" onClick={() => setAuthOpen(true)}>
-              <UserIcon size={14} />
-              Masuk
-            </button>
-          ))}
         <button type="button" className="topnav__dday" onClick={() => setOpen((o) => !o)}>
           {diff !== null ? (
             diff > 0 ? (
@@ -176,6 +135,48 @@ export function TopNav({ active, onChange }: TopNavProps): React.JSX.Element {
             )}
           </div>
         )}
+        {!authLoading &&
+          (user ? (
+            <div className="account-wrap" ref={menuRef}>
+              <button
+                type="button"
+                className="account-avatar"
+                onClick={() => setMenuOpen((o) => !o)}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                aria-label="Pengaturan akun"
+                title={user.email ?? 'Pengaturan akun'}
+              >
+                <CogIcon size={20} />
+              </button>
+              {menuOpen && (
+                <div className="account-menu" role="menu">
+                  <p className="account-menu__email" title={user.email ?? ''}>
+                    {user.email}
+                  </p>
+                  <button
+                    type="button"
+                    className="cta cta--danger account-menu__logout"
+                    disabled={signingOut}
+                    onClick={() => {
+                      setSigningOut(true)
+                      void signOut().finally(() => {
+                        setSigningOut(false)
+                        setMenuOpen(false)
+                      })
+                    }}
+                  >
+                    {signingOut ? 'Keluar...' : 'Keluar →'}
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button type="button" className="account-btn" onClick={() => setAuthOpen(true)}>
+              <UserIcon size={14} />
+              Masuk
+            </button>
+          ))}
       </div>
       {authOpen && <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />}
     </header>

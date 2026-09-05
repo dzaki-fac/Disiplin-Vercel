@@ -190,8 +190,7 @@ function SessionRow({ session }: { session: FocusSession }): React.JSX.Element {
 }
 
 export function HistoryView(): React.JSX.Element {
-  const { sessions, sessionList, clearSessions, exportSessions, importSessions, addManualSession } =
-    useStore()
+  const { sessions, sessionList, exportSessions, importSessions, addManualSession } = useStore()
   const [notice, setNotice] = useState<string | null>(null)
   const noticeTimer = useRef<number | null>(null)
   const [manualOpen, setManualOpen] = useState(false)
@@ -378,20 +377,6 @@ export function HistoryView(): React.JSX.Element {
       )}
 
       {notice && <p className="history-notice">{notice}</p>}
-
-      {sessions.length > 0 && (
-        <button
-          type="button"
-          className="cta cta--danger"
-          onClick={() => {
-            if (!window.confirm('Yakin ingin menghapus semua riwayat?')) return
-            clearSessions()
-          }}
-        >
-          Hapus semua riwayat
-          <span className="arrow">→</span>
-        </button>
-      )}
 
       {groups.map((group) => (
         <section key={group.key} className="history-group">
