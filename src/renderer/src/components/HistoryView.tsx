@@ -5,6 +5,7 @@ import { AnimatedInView } from './AnimatedInView'
 import { dayKey, fmtDay, fmtDuration, fmtTime, isToday } from '../lib/utils'
 import { CustomSelect } from './CustomSelect'
 import { DatePicker } from './DatePicker'
+import { HistoryRadarChart } from './HistoryRadarChart'
 import { ExportIcon, ImportIcon, PlusIcon } from './icons'
 
 function toTimeValue(ts: number): string {
@@ -274,6 +275,14 @@ export function HistoryView(): React.JSX.Element {
           </button>
         </div>
       </header>
+
+      <AnimatedInView as="section" className="panel">
+        <div className="panel__head">
+          <h2>Pola Harian</h2>
+          <span className="panel__hint">hari ini · per 4 jam</span>
+        </div>
+        <HistoryRadarChart />
+      </AnimatedInView>
 
       {manualOpen && (
         <div className="modal-overlay" onMouseDown={() => setManualOpen(false)}>

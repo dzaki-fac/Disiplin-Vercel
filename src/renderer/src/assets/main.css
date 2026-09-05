@@ -2026,6 +2026,44 @@ button {
   border-radius: 2px;
 }
 
+.history-radar {
+  padding: 8px 8px 12px;
+  background: rgb(255 255 255 / 0.55);
+  border: 1px solid var(--fog);
+  border-radius: var(--radius);
+}
+
+.history-radar__chart {
+  width: min(232px, 68vw);
+  margin: 0 auto;
+}
+
+.history-radar__chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.history-radar__chart .ring__content {
+  pointer-events: none;
+}
+
+.history-radar__total {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--carbon);
+  line-height: 1.1;
+}
+
+.history-radar__sub {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--slate);
+}
+
 .week-tooltip {
   padding: 10px 12px;
   background: var(--paper);
