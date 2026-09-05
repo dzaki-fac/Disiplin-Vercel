@@ -341,6 +341,18 @@ function SessionManager(): React.JSX.Element {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
 
+  // Selalu default memilih sesi pertama yang dibikin (paling bawah di daftar)
+  // kalau belum ada yang dipilih — mis. awal buka, habis hapus sesi aktif,
+  // atau ganti akun. Hanya saat timer idle tanpa progres agar tidak me-reset.
+  useEffect(() => {
+    if (sessionList.length === 0) return
+    const selected = sessionList.some((s) => s.title === timer.activeSessionTitle)
+    if (selected) return
+    if (timer.phase !== 'idle' || timer.elapsedMs !== 0) return
+    const first = sessionList[sessionList.length - 1]
+    if (first) beginSession(first.title)
+  }, [timer.activeSessionTitle, timer.phase, timer.elapsedMs, sessionList, beginSession])
+
   const submitNew = (e: React.FormEvent): void => {
     e.preventDefault()
     const trimmed = newTitle.trim()
