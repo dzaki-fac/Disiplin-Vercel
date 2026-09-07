@@ -52,10 +52,12 @@ export function fmtHourMin(min: number): string {
   return `${h}:${String(m).padStart(2, '0')}`
 }
 
-const timeFmt = new Intl.DateTimeFormat('id-ID', {
-  hour: '2-digit',
-  minute: '2-digit'
-})
+export const fmtTime = (ts: number): string => {
+  const d = new Date(ts)
+  const h = String(d.getHours()).padStart(2, '0')
+  const m = String(d.getMinutes()).padStart(2, '0')
+  return `${h}:${m}`
+}
 
 const dayFmt = new Intl.DateTimeFormat('id-ID', {
   weekday: 'short',
@@ -65,7 +67,6 @@ const dayFmt = new Intl.DateTimeFormat('id-ID', {
 
 const shortDayFmt = new Intl.DateTimeFormat('id-ID', { weekday: 'short' })
 
-export const fmtTime = (ts: number): string => timeFmt.format(ts)
 export const fmtDay = (ts: number): string => dayFmt.format(ts)
 export const fmtShortDay = (ts: number): string => shortDayFmt.format(ts)
 

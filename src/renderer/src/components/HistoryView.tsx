@@ -2,11 +2,13 @@ import { useMemo, useRef, useState } from 'react'
 import type { FocusSession } from '../types'
 import { useStore } from '../lib/storeContext'
 import { AnimatedInView } from './AnimatedInView'
-import { dayKey, fmtDay, fmtDuration, fmtTime, isToday } from '../lib/utils'
+import { dayKey, fmtDay, fmtDuration, fmtTime, isToday, startOfDay } from '../lib/utils'
 import { CustomSelect } from './CustomSelect'
 import { DatePicker } from './DatePicker'
 import { HistoryRadarChart } from './HistoryRadarChart'
-import { ExportIcon, ImportIcon, PlusIcon } from './icons'
+import { ChevronLeftIcon, ChevronRightIcon, ExportIcon, ImportIcon, PlusIcon } from './icons'
+
+const CHART_DAY_MS = 24 * 3600 * 1000
 
 function toTimeValue(ts: number): string {
   const d = new Date(ts)
@@ -17,8 +19,54 @@ function toTimeValue(ts: number): string {
 }
 
 function secondsOfDay(v: string): number {
-  const parts = v.split(':').map(Number)
-  return (parts[0] || 0) * 3600 + (parts[1] || 0) * 60 + (parts[2] || 0)
+  const clean = v.replace(/\./g, ':').trim()
+  const parts = clean.split(':').map(Number)
+  const h = Math.min(23, Math.max(0, parts[0] || 0))
+  const m = Math.min(59, Math.max(0, parts[1] || 0))
+  const s = Math.min(59, Math.max(0, parts[2] || 0))
+  return h * 3600 + m * 60 + s
+}
+
+function normalizeTimeValue(v: string): string {
+  const clean = v.replace(/\./g, ':').trim()
+  if (!clean) return '00:00:00'
+  const parts = clean.split(':').map((p) => Number(p.replace(/\D/g, '')))
+  const h = Math.min(23, Math.max(0, Number.isNaN(parts[0]) ? 0 : parts[0]))
+  const m = Math.min(59, Math.max(0, Number.isNaN(parts[1]) ? 0 : (parts[1] ?? 0)))
+  const s = Math.min(59, Math.max(0, Number.isNaN(parts[2]) ? 0 : (parts[2] ?? 0)))
+  const hh = String(h).padStart(2, '0')
+  const mm = String(m).padStart(2, '0')
+  const ss = String(s).padStart(2, '0')
+  return `${hh}:${mm}:${ss}`
+}
+
+function TimeInput({
+  value,
+  onChange,
+  label
+}: {
+  value: string
+  onChange: (v: string) => void
+  label: string
+}): React.JSX.Element {
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      placeholder="HH:MM:SS"
+      title="Format 24 jam (HH:MM:SS)"
+      maxLength={8}
+      aria-label={label}
+      value={value}
+      onChange={(e) => {
+        const sanitized = e.target.value.replace(/[^0-9:]/g, '').slice(0, 8)
+        onChange(sanitized)
+      }}
+      onBlur={() => {
+        onChange(normalizeTimeValue(value))
+      }}
+    />
+  )
 }
 
 function EditPopup({
@@ -45,11 +93,15 @@ function EditPopup({
   const totalSeconds = Math.max(1, diff)
 
   const commit = (): void => {
+    const startNorm = normalizeTimeValue(start)
+    const endNorm = normalizeTimeValue(end)
+    setStart(startNorm)
+    setEnd(endNorm)
     const baseDate = new Date(editDate)
     baseDate.setHours(0, 0, 0, 0)
     const baseTs = baseDate.getTime()
-    const startTs = baseTs + secondsOfDay(start) * 1000
-    let endTs = baseTs + secondsOfDay(end) * 1000
+    const startTs = baseTs + secondsOfDay(startNorm) * 1000
+    let endTs = baseTs + secondsOfDay(endNorm) * 1000
     if (endTs <= startTs) endTs += 24 * 3600 * 1000
     const seconds = Math.max(1, Math.round((endTs - startTs) / 1000))
     onSave({ taskTitle: title.trim() || null, seconds, startedAt: startTs, completedAt: endTs })
@@ -97,8 +149,8 @@ function EditPopup({
         <div className="session-edit__times">
           <span className="session-edit__label">Jam mulai</span>
           <span className="session-edit__label">Jam selesai</span>
-          <input type="time" step="1" value={start} onChange={(e) => setStart(e.target.value)} />
-          <input type="time" step="1" value={end} onChange={(e) => setEnd(e.target.value)} />
+          <TimeInput value={start} onChange={setStart} label="Jam mulai (format 24 jam)" />
+          <TimeInput value={end} onChange={setEnd} label="Jam selesai (format 24 jam)" />
         </div>
 
         <div className="session-edit__footer">
@@ -191,7 +243,8 @@ function SessionRow({ session }: { session: FocusSession }): React.JSX.Element {
 }
 
 export function HistoryView(): React.JSX.Element {
-  const { sessions, sessionList, exportSessions, importSessions, addManualSession } = useStore()
+  const { sessions, sessionList, exportSessions, importSessions, addManualSession, timer } =
+    useStore()
   const [notice, setNotice] = useState<string | null>(null)
   const noticeTimer = useRef<number | null>(null)
   const [manualOpen, setManualOpen] = useState(false)
@@ -202,6 +255,28 @@ export function HistoryView(): React.JSX.Element {
     const d = new Date(Date.now() + 25 * 60_000)
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
   })
+  const [chartDay, setChartDay] = useState(() => startOfDay(new Date().getTime()))
+
+  // Default dropdown tambah sesi langsung terpilih saat modal dibuka:
+  // pakai sesi aktif timer kalau masih ada, kalau tidak pakai sesi pertama.
+  const openManual = (): void => {
+    if (
+      timer.activeSessionTitle &&
+      sessionList.some((s) => s.title === timer.activeSessionTitle)
+    ) {
+      setManualTitle(timer.activeSessionTitle)
+    } else if (sessionList.length > 0) {
+      setManualTitle(sessionList[0].title)
+    } else {
+      setManualTitle('')
+    }
+    setManualOpen(true)
+  }
+
+  const isChartToday = chartDay >= startOfDay(new Date().getTime())
+  const shiftChartDay = (delta: number): void => {
+    setChartDay((prev) => prev + delta * CHART_DAY_MS)
+  }
 
   const showNotice = (text: string): void => {
     setNotice(text)
@@ -268,7 +343,10 @@ export function HistoryView(): React.JSX.Element {
             className="icon-btn icon-btn--bordered"
             aria-label="Tambah sesi manual"
             title="Tambah sesi manual"
-            onClick={() => setManualOpen((o) => !o)}
+            onClick={() => {
+              if (manualOpen) setManualOpen(false)
+              else openManual()
+            }}
             data-sound-none
           >
             <PlusIcon size={16} />
@@ -279,9 +357,32 @@ export function HistoryView(): React.JSX.Element {
       <AnimatedInView as="section" className="panel">
         <div className="panel__head">
           <h2>Pola Harian</h2>
-          <span className="panel__hint">hari ini · per 4 jam</span>
+          <div className="day-nav">
+            <button
+              type="button"
+              className="icon-btn icon-btn--bordered"
+              aria-label="Hari sebelumnya"
+              title="Hari sebelumnya"
+              onClick={() => shiftChartDay(-1)}
+            >
+              <ChevronLeftIcon size={16} />
+            </button>
+            <span className="day-nav__label">
+              {isChartToday ? 'Hari ini' : fmtDay(chartDay)}
+            </span>
+            <button
+              type="button"
+              className="icon-btn icon-btn--bordered"
+              aria-label="Hari berikutnya"
+              title="Hari berikutnya"
+              disabled={isChartToday}
+              onClick={() => shiftChartDay(1)}
+            >
+              <ChevronRightIcon size={16} />
+            </button>
+          </div>
         </div>
-        <HistoryRadarChart />
+        <HistoryRadarChart dayStart={chartDay} />
       </AnimatedInView>
 
       {manualOpen && (
@@ -290,11 +391,15 @@ export function HistoryView(): React.JSX.Element {
             className="session-edit"
             onSubmit={(e) => {
               e.preventDefault()
+              const startNorm = normalizeTimeValue(manualStart)
+              const endNorm = normalizeTimeValue(manualEnd)
+              setManualStart(startNorm)
+              setManualEnd(endNorm)
               const baseDate = new Date(manualDate)
               baseDate.setHours(0, 0, 0, 0)
               const baseTs = baseDate.getTime()
-              const startTs = baseTs + secondsOfDay(manualStart) * 1000
-              let endTs = baseTs + secondsOfDay(manualEnd) * 1000
+              const startTs = baseTs + secondsOfDay(startNorm) * 1000
+              let endTs = baseTs + secondsOfDay(endNorm) * 1000
               if (endTs <= startTs) endTs += 24 * 3600 * 1000
               const secs = Math.max(1, Math.round((endTs - startTs) / 1000))
               addManualSession(manualTitle.trim() || null, secs, startTs, endTs - startTs)
@@ -313,27 +418,19 @@ export function HistoryView(): React.JSX.Element {
             <h3 className="session-edit__title">Tambah sesi</h3>
 
             <label className="session-edit__label" htmlFor="manual-session-pick">
-              Pilih sesi yang ada
+              Pilih sesi
             </label>
             <CustomSelect
               options={[
                 { value: '', label: 'Tanpa tugas' },
                 ...sessionList.map((s) => ({ value: s.title, label: s.title }))
               ]}
-              value={sessionList.some((s) => s.title === manualTitle) ? manualTitle : ''}
+              value={
+                manualTitle === '' || sessionList.some((s) => s.title === manualTitle)
+                  ? manualTitle
+                  : ''
+              }
               onChange={(v) => setManualTitle(v)}
-            />
-
-            <label className="session-edit__label" htmlFor="manual-session-title">
-              Nama sesi
-            </label>
-            <input
-              id="manual-session-title"
-              type="text"
-              maxLength={80}
-              placeholder="Nama sesi"
-              value={manualTitle}
-              onChange={(e) => setManualTitle(e.target.value)}
             />
 
             <label className="session-edit__label">Tanggal</label>
@@ -342,17 +439,15 @@ export function HistoryView(): React.JSX.Element {
             <div className="session-edit__times">
               <span className="session-edit__label">Jam mulai</span>
               <span className="session-edit__label">Jam selesai</span>
-              <input
-                type="time"
-                step="1"
+              <TimeInput
                 value={manualStart}
-                onChange={(e) => setManualStart(e.target.value)}
+                onChange={setManualStart}
+                label="Jam mulai (format 24 jam)"
               />
-              <input
-                type="time"
-                step="1"
+              <TimeInput
                 value={manualEnd}
-                onChange={(e) => setManualEnd(e.target.value)}
+                onChange={setManualEnd}
+                label="Jam selesai (format 24 jam)"
               />
             </div>
 

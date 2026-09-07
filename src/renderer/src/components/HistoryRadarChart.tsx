@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useStore } from '../lib/storeContext'
-import { fmtMinutes, startOfDay } from '../lib/utils'
+import { fmtMinutes } from '../lib/utils'
 
 // Pie 6 segitiga: tiap segitiga mewakili satu bagian 4 jam sehari
 // (00–04, 04–08, …, 20–24). Panjang segitiga dari pusat (linear)
@@ -81,12 +81,15 @@ function trianglePath(cx: number, cy: number, r: number, index: number): string 
   return `M ${cx} ${cy} L ${s.x.toFixed(2)} ${s.y.toFixed(2)} L ${e.x.toFixed(2)} ${e.y.toFixed(2)} Z`
 }
 
-export function HistoryRadarChart(): React.JSX.Element {
+export function HistoryRadarChart({ dayStart }: { dayStart: number }): React.JSX.Element {
   const { sessions } = useStore()
 
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const [hover, setHover] = useState<{ block: number; x: number; y: number } | null>(null)
+
   const { data, totalMinutes, count, maxMinutes } = useMemo(() => {
-    // Hanya sesi hari ini (00.00–24.00) yang dihitung
-    const windowStart = startOfDay(new Date().getTime())
+    // Hanya sesi pada hari yang dipilih (00.00–24.00) yang dihitung
+    const windowStart = dayStart
     const windowEnd = windowStart + DAY_MS
     const byBlock = [0, 0, 0, 0, 0, 0]
     let winCount = 0
@@ -107,7 +110,14 @@ export function HistoryRadarChart(): React.JSX.Element {
       count: winCount,
       maxMinutes: Math.max(0, ...chartData.map((d) => d.minutes))
     }
-  }, [sessions])
+  }, [sessions, dayStart])
+
+  const updateHover = (e: React.MouseEvent, block: number): void => {
+    const el = wrapRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    setHover({ block, x: e.clientX - rect.left, y: e.clientY - rect.top })
+  }
 
   if (sessions.length === 0) {
     return <p className="panel__empty">Belum ada sesi.</p>
@@ -116,9 +126,11 @@ export function HistoryRadarChart(): React.JSX.Element {
   return (
     <div className="history-radar">
       <div
+        ref={wrapRef}
         className="history-radar__chart ring"
         role="img"
         aria-label={`Distribusi fokus per 4 jam: ${fmtMinutes(totalMinutes)}, ${String(count)} sesi`}
+        onMouseLeave={() => setHover(null)}
       >
         <svg viewBox={`0 0 ${String(COX_SIZE)} ${String(COX_SIZE)}`} aria-hidden="true">
           {/* trek tiap blok */}
@@ -127,6 +139,8 @@ export function HistoryRadarChart(): React.JSX.Element {
               key={`track-${d.block}`}
               d={trianglePath(COX_CENTER, COX_CENTER, COX_MAX_R, i)}
               fill="var(--fog)"
+              onMouseMove={(e) => updateHover(e, i)}
+              onClick={(e) => updateHover(e, i)}
             />
           ))}
           {/* nilai tiap blok */}
@@ -138,9 +152,9 @@ export function HistoryRadarChart(): React.JSX.Element {
                 key={d.block}
                 d={trianglePath(COX_CENTER, COX_CENTER, r, i)}
                 fill={LEVEL_COLORS[levelForBlock(d.minutes)] ?? 'var(--ember)'}
-              >
-                <title>{`${d.block} · ${fmtMinutes(d.minutes)}`}</title>
-              </path>
+                onMouseMove={(e) => updateHover(e, i)}
+                onClick={(e) => updateHover(e, i)}
+              />
             )
           })}
           {/* label tiap blok */}
@@ -165,7 +179,20 @@ export function HistoryRadarChart(): React.JSX.Element {
           <span className="history-radar__total">{fmtMinutes(totalMinutes)}</span>
           <span className="history-radar__sub">{count} sesi</span>
         </div>
+        {hover && (
+          <div
+            className="history-radar__tooltip week-tooltip"
+            style={{ left: hover.x, top: hover.y }}
+          >
+            <span className="week-tooltip__label">
+              {data[hover.block]?.block} · {fmtMinutes(data[hover.block]?.minutes ?? 0)}
+            </span>
+          </div>
+        )}
       </div>
+      {count === 0 && (
+        <p className="history-radar__empty">Tidak ada sesi pada hari ini.</p>
+      )}
     </div>
   )
 }

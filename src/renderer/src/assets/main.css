@@ -2033,6 +2033,29 @@ button {
   border-radius: var(--radius);
 }
 
+.day-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.day-nav__label {
+  min-width: 92px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--carbon);
+  text-transform: capitalize;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-radar__empty {
+  padding: 2px 12px 8px;
+  font-size: 12px;
+  text-align: center;
+  color: var(--slate);
+}
+
 .history-radar__chart {
   width: min(232px, 68vw);
   margin: 0 auto;
@@ -2047,6 +2070,18 @@ button {
 
 .history-radar__chart .ring__content {
   pointer-events: none;
+}
+
+.history-radar__tooltip {
+  position: absolute;
+  z-index: 5;
+  transform: translate(-50%, calc(-100% - 12px));
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.history-radar__tooltip .week-tooltip__label {
+  margin-bottom: 0;
 }
 
 .history-radar__total {
