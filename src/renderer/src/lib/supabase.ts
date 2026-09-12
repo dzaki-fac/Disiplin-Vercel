@@ -141,6 +141,72 @@ function enqueue(op: PendingOp): void {
   console.log(`[supabase] offline queue +1 (${op.type}), pending: ${ops.length}`)
 }
 
+// --- tombstone hapus (biar delete tahan reload) ---
+// Masalah yang diperbaiki: push delete itu fire-and-forget. Kalau user reload
+// sebelum request DELETE sampai ke server, remote masih menyimpan barisnya,
+// lalu initial-load (remote menang) menghidupkan lagi tugas yang baru dihapus.
+// Tombstone = catat id yang dihapus ke localStorage SECARA SYNCHRON,
+// jadi walau reload terjadi di tengah request, id itu tetap disaring dari
+// hasil fetch dan delete-nya dicoba ulang.
+const LS_DELETED = 'disiplin.deletedIds'
+type DeletedKind = 'tasks' | 'sessions' | 'session_list'
+const DELETED_CAP = 1000
+
+function loadDeleted(): Record<DeletedKind, string[]> {
+  try {
+    const raw = localStorage.getItem(LS_DELETED)
+    if (!raw) return { tasks: [], sessions: [], session_list: [] }
+    const parsed = JSON.parse(raw) as Partial<Record<DeletedKind, string[]>>
+    return {
+      tasks: Array.isArray(parsed.tasks) ? parsed.tasks : [],
+      sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
+      session_list: Array.isArray(parsed.session_list) ? parsed.session_list : []
+    }
+  } catch {
+    return { tasks: [], sessions: [], session_list: [] }
+  }
+}
+function saveDeleted(d: Record<DeletedKind, string[]>): void {
+  try {
+    localStorage.setItem(LS_DELETED, JSON.stringify(d))
+  } catch {}
+}
+
+/** Catat id sebagai "sudah dihapus" (synchron — tahan reload). */
+export function rememberDeleted(kind: DeletedKind, id: string | string[]): void {
+  try {
+    const ids = Array.isArray(id) ? id : [id]
+    if (ids.length === 0) return
+    const d = loadDeleted()
+    const set = new Set(d[kind])
+    for (const x of ids) set.add(x)
+    d[kind] = [...set].slice(-DELETED_CAP)
+    saveDeleted(d)
+  } catch {}
+}
+
+/** Hapus catatan tombstone (dipakai saat baris dipastikan sudah hilang / dihidupkan lagi via upsert). */
+export function forgetDeleted(kind: DeletedKind, id: string | string[]): void {
+  try {
+    const ids = new Set(Array.isArray(id) ? id : [id])
+    if (ids.size === 0) return
+    const d = loadDeleted()
+    d[kind] = d[kind].filter((x) => !ids.has(x))
+    saveDeleted(d)
+  } catch {}
+}
+
+/** Daftar id yang sedang dianggap terhapus (untuk menyaring hasil fetch). */
+export function getDeletedIds(kind: DeletedKind): Set<string> {
+  return new Set(loadDeleted()[kind])
+}
+
+function clearDeleted(): void {
+  try {
+    localStorage.removeItem(LS_DELETED)
+  } catch {}
+}
+
 export async function flushPending(): Promise<{ flushed: number; remaining: number; errors: string[] }> {
   const ops = loadPending()
   if (ops.length === 0) return { flushed: 0, remaining: 0, errors: [] }
@@ -159,12 +225,14 @@ export async function flushPending(): Promise<{ flushed: number; remaining: numb
       } else if (op.type === 'delete_task') {
         const { error } = await supabase.from('tasks').delete().eq('id', op.id).eq('user_id', uid)
         if (error) throw error
+        forgetDeleted('tasks', op.id)
       } else if (op.type === 'upsert_session') {
         const { error } = await supabase.from('sessions').upsert(toDbSession(op.session, uid), { onConflict: 'id' })
         if (error) throw error
       } else if (op.type === 'delete_session') {
         const { error } = await supabase.from('sessions').delete().eq('id', op.id).eq('user_id', uid)
         if (error) throw error
+        forgetDeleted('sessions', op.id)
       } else if (op.type === 'clear_sessions') {
         const { error } = await supabase.from('sessions').delete().eq('user_id', uid)
         if (error) throw error
@@ -176,6 +244,7 @@ export async function flushPending(): Promise<{ flushed: number; remaining: numb
       } else if (op.type === 'delete_session_list') {
         const { error } = await supabase.from('session_list').delete().eq('id', op.id).eq('user_id', uid)
         if (error) throw error
+        forgetDeleted('session_list', op.id)
       }
     } catch (e) {
       if (isNetworkError(e)) {
@@ -222,6 +291,7 @@ export function clearLocalUserData(): void {
     localStorage.removeItem('disiplin.weekNames')
     localStorage.removeItem('disiplin.groupOrder')
     localStorage.removeItem(LS_PENDING)
+    clearDeleted()
   } catch {}
 }
 
@@ -278,6 +348,8 @@ export async function fetchSessionList(): Promise<SessionItem[]> {
 export const pushTaskUpsert = (task: Task): void => {
   const uid = authUserId
   if (!uid) return
+  // Upsert eksplisit = baris dihidupkan lagi -> cabut tombstonenya biar tidak disaring.
+  forgetDeleted('tasks', task.id)
   if (!navigator.onLine) {
     enqueue({ type: 'upsert_task', task })
     return
@@ -298,6 +370,8 @@ export const pushTaskUpsert = (task: Task): void => {
 export const pushTaskDelete = (id: string): void => {
   const uid = authUserId
   if (!uid) return
+  // Synchron: catat dulu sebelum request async, biar tahan reload cepat.
+  rememberDeleted('tasks', id)
   if (!navigator.onLine) {
     enqueue({ type: 'delete_task', id })
     return
@@ -307,7 +381,10 @@ export const pushTaskDelete = (id: string): void => {
       const { error } = await supabase.from('tasks').delete().eq('id', id).eq('user_id', uid)
       if (error) {
         if (isNetworkError(error)) enqueue({ type: 'delete_task', id })
+        // error non-network (mis. RLS): tombstone dipertahankan, retry saat initial-load
         else logErr('delete task', error)
+      } else {
+        forgetDeleted('tasks', id)
       }
     } catch (e) {
       if (isNetworkError(e)) enqueue({ type: 'delete_task', id })
@@ -318,6 +395,7 @@ export const pushTaskDelete = (id: string): void => {
 export const pushTasksBulkUpsert = (tasks: Task[]): void => {
   const uid = authUserId
   if (!uid || tasks.length === 0) return
+  for (const t of tasks) forgetDeleted('tasks', t.id)
   if (!navigator.onLine) {
     for (const t of tasks) enqueue({ type: 'upsert_task', task: t })
     return
@@ -338,6 +416,7 @@ export const pushTasksBulkUpsert = (tasks: Task[]): void => {
 export const pushSessionUpsert = (s: FocusSession): void => {
   const uid = authUserId
   if (!uid) return
+  forgetDeleted('sessions', s.id)
   if (!navigator.onLine) {
     enqueue({ type: 'upsert_session', session: s })
     return
@@ -358,6 +437,7 @@ export const pushSessionUpsert = (s: FocusSession): void => {
 export const pushSessionDelete = (id: string): void => {
   const uid = authUserId
   if (!uid) return
+  rememberDeleted('sessions', id)
   if (!navigator.onLine) {
     enqueue({ type: 'delete_session', id })
     return
@@ -368,6 +448,8 @@ export const pushSessionDelete = (id: string): void => {
       if (error) {
         if (isNetworkError(error)) enqueue({ type: 'delete_session', id })
         else logErr('delete session', error)
+      } else {
+        forgetDeleted('sessions', id)
       }
     } catch (e) {
       if (isNetworkError(e)) enqueue({ type: 'delete_session', id })
@@ -375,9 +457,10 @@ export const pushSessionDelete = (id: string): void => {
     }
   })()
 }
-export const pushSessionsClear = (): void => {
+export const pushSessionsClear = (ids?: string[]): void => {
   const uid = authUserId
   if (!uid) return
+  if (ids && ids.length > 0) rememberDeleted('sessions', ids)
   if (!navigator.onLine) {
     enqueue({ type: 'clear_sessions' })
     return
@@ -388,6 +471,8 @@ export const pushSessionsClear = (): void => {
       if (error) {
         if (isNetworkError(error)) enqueue({ type: 'clear_sessions' })
         else logErr('clear sessions', error)
+      } else if (ids && ids.length > 0) {
+        forgetDeleted('sessions', ids)
       }
     } catch (e) {
       if (isNetworkError(e)) enqueue({ type: 'clear_sessions' })
@@ -398,6 +483,7 @@ export const pushSessionsClear = (): void => {
 export const pushSessionItemUpsert = (item: SessionItem): void => {
   const uid = authUserId
   if (!uid) return
+  forgetDeleted('session_list', item.id)
   if (!navigator.onLine) {
     enqueue({ type: 'upsert_session_list', item })
     return
@@ -418,6 +504,7 @@ export const pushSessionItemUpsert = (item: SessionItem): void => {
 export const pushSessionItemDelete = (id: string): void => {
   const uid = authUserId
   if (!uid) return
+  rememberDeleted('session_list', id)
   if (!navigator.onLine) {
     enqueue({ type: 'delete_session_list', id })
     return
@@ -428,6 +515,8 @@ export const pushSessionItemDelete = (id: string): void => {
       if (error) {
         if (isNetworkError(error)) enqueue({ type: 'delete_session_list', id })
         else logErr('delete session_list', error)
+      } else {
+        forgetDeleted('session_list', id)
       }
     } catch (e) {
       if (isNetworkError(e)) enqueue({ type: 'delete_session_list', id })

@@ -1,20 +1,14 @@
 import { useMemo, useState, type DragEvent } from 'react'
 import type { Task } from '../types'
 import { useStore } from '../lib/storeContext'
+import { useAuth } from '../lib/authContext'
+import { GEMASTIK_PLAN, GEMASTIK_WEEK_NAMES } from '../data/gemastik-plan'
 import { AnimatedInView } from './AnimatedInView'
 import { CheckIcon, ChevronRightIcon, GripIcon, PencilIcon, TrashIcon } from './icons'
-
-const WEEK_ORDER = [1, 2, 3, 4]
 
 interface TaskGroup {
   week: number
   tasks: Task[]
-}
-
-function orderGroups(groups: TaskGroup[], groupOrder: number[]): TaskGroup[] {
-  const known = groupOrder.filter((w) => groups.some((g) => g.week === w))
-  const rest = groups.filter((g) => !known.includes(g.week))
-  return [...known.map((w) => groups.find((g) => g.week === w) as TaskGroup), ...rest]
 }
 
 function buildGroups(tasks: Task[]): TaskGroup[] {
@@ -30,11 +24,17 @@ function buildGroups(tasks: Task[]): TaskGroup[] {
       rest.push(t)
     }
   }
-  const buckets = WEEK_ORDER.map((w) => ({ week: w, tasks: map.get(w) ?? [] })).filter(
-    (g) => g.tasks.length > 0
-  )
+  // Dukung minggu berapapun (1-9 untuk rencana GEMASTIK, dst), urut menaik.
+  const weeks = [...map.keys()].sort((a, b) => a - b)
+  const buckets = weeks.map((w) => ({ week: w, tasks: map.get(w) ?? [] }))
   if (rest.length > 0) buckets.push({ week: 0, tasks: rest })
   return buckets
+}
+
+function orderGroups(groups: TaskGroup[], groupOrder: number[]): TaskGroup[] {
+  const known = groupOrder.filter((w) => groups.some((g) => g.week === w))
+  const rest = groups.filter((g) => !known.includes(g.week))
+  return [...known.map((w) => groups.find((g) => g.week === w) as TaskGroup), ...rest]
 }
 
 function TaskRow({ task }: { task: Task }): React.JSX.Element {
@@ -256,6 +256,60 @@ function TaskManager({
   )
 }
 
+function ImportGemastikButton(): React.JSX.Element {
+  const { tasks, addTask, setWeekName } = useStore()
+  const { user } = useAuth()
+  const [status, setStatus] = useState<string | null>(null)
+
+  const alreadyImported = GEMASTIK_PLAN.every((p) =>
+    tasks.some((t) => t.title === p.title && (t.week ?? 0) === p.week)
+  )
+
+  const handleImport = (): void => {
+    if (!user) {
+      setStatus('Login dulu sebagai zukozuno7@gmail.com, lalu klik impor lagi.')
+      return
+    }
+    let added = 0
+    for (const item of GEMASTIK_PLAN) {
+      const exists = tasks.some((t) => t.title === item.title && (t.week ?? 0) === item.week)
+      if (exists) continue
+      addTask(item.title, item.week)
+      added += 1
+    }
+    for (const [week, name] of Object.entries(GEMASTIK_WEEK_NAMES)) {
+      setWeekName(Number(week), name)
+    }
+    setStatus(
+      added > 0
+        ? `Berhasil menambahkan ${added} tugas ke akun ${user.email ?? ''}.`
+        : 'Semua 63 tugas sudah ada di akun ini.'
+    )
+  }
+
+  return (
+    <div className="task-manager__group" style={{ marginBottom: 16 }}>
+      <p className="view__sub" style={{ marginBottom: 8 }}>
+        Rencana GEMASTIK 9 minggu (63 tugas: Bitmask → Final Preparation).
+        {user ? ` Masuk sebagai ${user.email}.` : ' Login dulu untuk impor ke akun kamu.'}
+      </p>
+      <button
+        type="button"
+        className="cta cta--primary"
+        onClick={handleImport}
+        disabled={alreadyImported}
+      >
+        {alreadyImported ? 'Rencana sudah diimpor ✓' : 'Import Rencana GEMASTIK 9 Minggu'}
+      </button>
+      {status && (
+        <p className="view__sub" style={{ marginTop: 8 }}>
+          {status}
+        </p>
+      )}
+    </div>
+  )
+}
+
 export function TasksView(): React.JSX.Element {
   const { tasks, weekNames, groupOrder } = useStore()
   const [editOpen, setEditOpen] = useState(false)
@@ -299,12 +353,20 @@ export function TasksView(): React.JSX.Element {
         </button>
       </header>
 
-      {editOpen && <TaskManager groups={managerGroups} groupLabel={groupLabel} />}
+      {editOpen && (
+        <>
+          <ImportGemastikButton />
+          <TaskManager groups={managerGroups} groupLabel={groupLabel} />
+        </>
+      )}
 
       {tasks.length === 0 && (
         <div className="empty-state">
           <p>Belum ada tugas.</p>
           <p className="empty-state__sub">Kelola tugas lewat tombol edit di pojok atas.</p>
+          <div style={{ marginTop: 16 }}>
+            <ImportGemastikButton />
+          </div>
         </div>
       )}
 

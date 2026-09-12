@@ -11,6 +11,7 @@ import {
   fetchSessions,
   fetchTasks,
   flushPending,
+  getDeletedIds,
   pushSessionDelete,
   pushSessionItemDelete,
   pushSessionItemUpsert,
@@ -202,31 +203,59 @@ export function AppProvider({ children }: { children: ReactNode }): React.JSX.El
   // --- Supabase: initial load (remote -> local, atau local -> remote kalau remote kosong) ---
   // Hanya jalan saat login. Tamu (userId null) -> skip, tetap pakai localStorage.
   // Jalan ulang setiap ganti akun biar data selalu milik user yang sedang masuk.
+  // Urutan: flush antrean offline DULU (biar delete yang tertunda diterapkan di
+  // remote sebelum fetch), lalu fetch + saring tombstone + retry delete yang
+  // masih nyangkut di remote (kasus reload cepat sebelum request DELETE sampai).
   useEffect(() => {
     if (!userId) return
     let cancelled = false
     void (async () => {
       try {
+        await flushPending().catch(() => {})
         const [remoteTasks, remoteSessions, remoteList] = await Promise.all([
           fetchTasks().catch(() => null),
           fetchSessions().catch(() => null),
           fetchSessionList().catch(() => null)
         ])
         if (cancelled) return
-        if (remoteTasks && remoteTasks.length > 0) {
-          setTasks(remoteTasks.map((t, i) => ({ ...t, order: t.order ?? i })))
-        } else if (remoteTasks && remoteTasks.length === 0 && tasksRef.current.length > 0) {
-          pushTasksBulkUpsert(tasksRef.current)
+        if (remoteTasks) {
+          const gone = getDeletedIds('tasks')
+          const revived = remoteTasks.filter((t) => gone.has(t.id))
+          if (revived.length > 0) for (const t of revived) pushTaskDelete(t.id)
+          const visible = remoteTasks.filter((t) => !gone.has(t.id))
+          if (visible.length > 0) {
+            setTasks(visible.map((t, i) => ({ ...t, order: t.order ?? i })))
+          } else if (remoteTasks.length === 0 && tasksRef.current.length > 0) {
+            pushTasksBulkUpsert(tasksRef.current)
+          } else {
+            setTasks([])
+          }
         }
-        if (remoteSessions && remoteSessions.length > 0) {
-          setSessions(remoteSessions)
-        } else if (remoteSessions && remoteSessions.length === 0 && sessionsRef.current.length > 0) {
-          for (const s of sessionsRef.current) pushSessionUpsert(s)
+        if (remoteSessions) {
+          const gone = getDeletedIds('sessions')
+          const revived = remoteSessions.filter((s) => gone.has(s.id))
+          if (revived.length > 0) for (const s of revived) pushSessionDelete(s.id)
+          const visible = remoteSessions.filter((s) => !gone.has(s.id))
+          if (visible.length > 0) {
+            setSessions(visible)
+          } else if (remoteSessions.length === 0 && sessionsRef.current.length > 0) {
+            for (const s of sessionsRef.current) pushSessionUpsert(s)
+          } else {
+            setSessions([])
+          }
         }
-        if (remoteList && remoteList.length > 0) {
-          setSessionList(remoteList)
-        } else if (remoteList && remoteList.length === 0 && sessionListRef.current.length > 0) {
-          for (const it of sessionListRef.current) pushSessionItemUpsert(it)
+        if (remoteList) {
+          const gone = getDeletedIds('session_list')
+          const revived = remoteList.filter((l) => gone.has(l.id))
+          if (revived.length > 0) for (const l of revived) pushSessionItemDelete(l.id)
+          const visible = remoteList.filter((l) => !gone.has(l.id))
+          if (visible.length > 0) {
+            setSessionList(visible)
+          } else if (remoteList.length === 0 && sessionListRef.current.length > 0) {
+            for (const it of sessionListRef.current) pushSessionItemUpsert(it)
+          } else {
+            setSessionList([])
+          }
         }
       } catch (e) {
         console.warn('[supabase] initial load failed, pakai localStorage:', e)
@@ -248,7 +277,12 @@ export function AppProvider({ children }: { children: ReactNode }): React.JSX.El
         { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${userId}` },
         () => {
           void fetchTasks()
-            .then((t) => setTasks(t.map((x, i) => ({ ...x, order: x.order ?? i }))))
+            .then((t) => {
+              const gone = getDeletedIds('tasks')
+              setTasks(
+                t.filter((x) => !gone.has(x.id)).map((x, i) => ({ ...x, order: x.order ?? i }))
+              )
+            })
             .catch(() => {})
         }
       )
@@ -257,7 +291,10 @@ export function AppProvider({ children }: { children: ReactNode }): React.JSX.El
         { event: '*', schema: 'public', table: 'sessions', filter: `user_id=eq.${userId}` },
         () => {
           void fetchSessions()
-            .then((s) => setSessions(s))
+            .then((s) => {
+              const gone = getDeletedIds('sessions')
+              setSessions(s.filter((x) => !gone.has(x.id)))
+            })
             .catch(() => {})
         }
       )
@@ -266,7 +303,10 @@ export function AppProvider({ children }: { children: ReactNode }): React.JSX.El
         { event: '*', schema: 'public', table: 'session_list', filter: `user_id=eq.${userId}` },
         () => {
           void fetchSessionList()
-            .then((l) => setSessionList(l))
+            .then((l) => {
+              const gone = getDeletedIds('session_list')
+              setSessionList(l.filter((x) => !gone.has(x.id)))
+            })
             .catch(() => {})
         }
       )
@@ -759,8 +799,8 @@ export function AppProvider({ children }: { children: ReactNode }): React.JSX.El
   }, [])
 
   const clearSessions = useCallback(() => {
+    pushSessionsClear(sessionsRef.current.map((s) => s.id))
     setSessions([])
-    pushSessionsClear()
   }, [])
 
   const deleteSession = useCallback((id: string) => {
