@@ -4,7 +4,6 @@ import { defaultSettings, defaultTimer, durationFor } from './constants'
 import { StoreContext, type CompletionInfo } from './storeContext'
 import { useAuth } from './authContext'
 import { beep, clickPrimary, isToday, pauseBeep, uid } from './utils'
-import { SEED_SESSIONS, SEED_TASK, SEED_TASK_ID, TRAINING_TASKS } from './seed'
 import {
   clearLocalUserData,
   fetchSessionList,
@@ -30,8 +29,6 @@ const LS_TIMER = 'disiplin.timer'
 const LS_SESSION_LIST = 'disiplin.sessionList'
 const LS_WEEK_NAMES = 'disiplin.weekNames'
 const LS_GROUP_ORDER = 'disiplin.groupOrder'
-const LS_SEEDED = 'disiplin.seeded'
-const SEED_VERSION = 5
 
 let lastCompleteBeepAt = 0
 const completeBeep = (): void => {
@@ -58,21 +55,9 @@ const save = (key: string, value: unknown): void => {
   }
 }
 
-function seedVersion(): number {
-  try {
-    return Number(localStorage.getItem(LS_SEEDED) ?? 0)
-  } catch {
-    return SEED_VERSION
-  }
-}
-
 function initTasks(): Task[] {
-  const existing = loadJSON<Task[]>(LS_TASKS, [])
-  if (seedVersion() >= SEED_VERSION) return existing
-  const withoutLegacy = existing.filter((t) => t.id !== SEED_TASK_ID)
-  const known = new Set(withoutLegacy.map((t) => t.title))
-  const fresh = TRAINING_TASKS.filter((t) => !known.has(t.title))
-  return [...withoutLegacy, ...fresh]
+  // Tidak ada data contoh: pengguna & perangkat baru mulai dari kosong.
+  return loadJSON<Task[]>(LS_TASKS, [])
 }
 function migrateSessions(raw: Record<string, unknown>[]): FocusSession[] {
   return raw.map((s) => {
@@ -91,30 +76,16 @@ function migrateSessions(raw: Record<string, unknown>[]): FocusSession[] {
 }
 
 function initSessions(): FocusSession[] {
-  const existing = migrateSessions(loadJSON<Record<string, unknown>[]>(LS_SESSIONS, []))
-  if (seedVersion() >= SEED_VERSION) return existing
-  const known = new Set(existing.map((s) => s.id))
-  const fresh = SEED_SESSIONS.filter((s) => !known.has(s.id))
-  const migrated = existing.map((s) => {
-    const seed = SEED_SESSIONS.find((x) => x.id === s.id)
-    if (!seed) return s
-    return { ...s, taskId: seed.taskId, taskTitle: seed.taskTitle }
-  })
-  save(LS_SEEDED, String(SEED_VERSION))
-  return [...fresh, ...migrated]
+  return migrateSessions(loadJSON<Record<string, unknown>[]>(LS_SESSIONS, []))
 }
 
 function initSessionList(): SessionItem[] {
   const existing = loadJSON<SessionItem[] | null>(LS_SESSION_LIST, null)
   if (existing) return existing
   const seen = new Map<string, SessionItem>()
-  const add = (title: string): void => {
-    if (!seen.has(title)) seen.set(title, { id: title, title })
-  }
   for (const s of loadJSON<FocusSession[]>(LS_SESSIONS, [])) {
-    if (s.taskTitle) add(s.taskTitle)
+    if (s.taskTitle && !seen.has(s.taskTitle)) seen.set(s.taskTitle, { id: s.taskTitle, title: s.taskTitle })
   }
-  add(SEED_TASK.title)
   return [...seen.values()]
 }
 
