@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useStore } from '../lib/storeContext'
-import { dayKey, fmtDuration, isToday } from '../lib/utils'
+import { dayKey, fmtDuration, isToday, startOfWeekMonday } from '../lib/utils'
 import { AnimatedInView } from './AnimatedInView'
 import { FlameIcon } from './FlameIcon'
 import { Heatmap } from './Heatmap'
@@ -21,7 +21,10 @@ export function StatsView(): React.JSX.Element {
   const { sessions } = useStore()
 
   const stats = useMemo(() => {
-    const totalSeconds = sessions.reduce((a, s) => a + s.seconds, 0)
+    const weekStart = startOfWeekMonday()
+    const totalSeconds = sessions
+      .filter((s) => s.completedAt >= weekStart)
+      .reduce((a, s) => a + s.seconds, 0)
     const todaySeconds = sessions
       .filter((s) => isToday(s.completedAt))
       .reduce((a, s) => a + s.seconds, 0)
@@ -58,7 +61,7 @@ export function StatsView(): React.JSX.Element {
 
       <div className="stat-grid">
         {statCard(
-          'Total fokus',
+          'Total fokus minggu ini',
           fmtDuration(stats.totalSeconds),
           undefined,
           stats.totalSeconds === 0

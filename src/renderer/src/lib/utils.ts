@@ -72,6 +72,17 @@ export const fmtShortDay = (ts: number): string => shortDayFmt.format(ts)
 
 export const isToday = (ts: number): boolean => dayKey(ts) === dayKey(Date.now())
 
+export const startOfWeekMonday = (now: number = Date.now()): number => {
+  const d = new Date(now)
+  d.setHours(0, 0, 0, 0)
+  const day = (d.getDay() + 6) % 7 // Senin=0 ... Minggu=6
+  d.setDate(d.getDate() - day)
+  return d.getTime()
+}
+
+export const isThisWeekMonday = (ts: number, now: number = Date.now()): boolean =>
+  ts >= startOfWeekMonday(now)
+
 export function beep(): void {
   try {
     const Ctx = window.AudioContext
