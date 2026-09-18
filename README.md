@@ -1,47 +1,53 @@
-# Disiplin
+# Disiplin — Focus Timer (Web)
 
-> A minimalist focus timer built for deep work.
+> Timer fokus minimalis untuk deep work — versi web, siap deploy ke Vercel.
 
 <p align="center">
-  <img src="resources/icon.png" alt="Disiplin" width="120" />
+  <img src="public/icon.png" alt="Disiplin" width="120" />
 </p>
 
-Disiplin is a desktop focus timer for the Pomodoro technique, plain timers, and
-stopwatch-style tracking. It records every finished session, organizes your tasks
-into weekly buckets, and turns your history into charts, a monthly calendar, and a
-yearly heatmap — all stored locally on your machine.
+Disiplin adalah aplikasi focus timer untuk teknik Pomodoro, timer biasa, dan
+stopwatch. Setiap sesi yang selesai tercatat otomatis, tugas diatur dalam
+bucket mingguan, dan riwayatmu divisualisasikan jadi grafik, kalender bulanan,
+dan heatmap tahunan.
 
-Built with Electron, React, and TypeScript.
+Versi ini adalah **versi web** (migrasi dari versi Electron) dengan:
 
-## Features
+- **Akun per-user via Supabase Auth** (email + password) — data tiap user terpisah via Row Level Security
+- **Mode tamu** — bisa dipakai tanpa login, data tersimpan di `localStorage`
+- **Sync cloud + offline-first** — data lokal jadi cache, sinkron ke Supabase saat login
+- **PWA installable** — bisa di-install di desktop & mobile, jalan offline via service worker
+- **Responsif** — layout mobile (bottom nav) & desktop (top nav)
 
-- **Three timer modes**
-  - **Pomodoro** — alternating focus / short break / long break cycles with
-    configurable durations and long-break intervals.
-  - **Timer** — a countdown timer with a custom duration.
-  - **Stopwatch** — count up without a preset duration.
-  - Auto-start between focus and break stages, optional UI sounds, and a
-    progress ring around the clock.
-- **Task planning**
-  - Tasks organized into weekly buckets (4 weeks rolling).
-  - Add, edit, complete, and delete tasks; drag to reorder; attach a session to
-    any task.
-- **History**
-  - A full log of every completed session with duration, task, and timestamp.
-  - **Export / import** your session history as JSON to back it up or move it
-    between machines.
-- **Statistics**
-  - Summary cards: total focus time, today's minutes, current streak, sessions today.
-  - **7-day chart** comparing this week against last week, with an average line.
-  - **Monthly calendar** heat map.
-  - **Yearly heatmap** with a 2-hour color scale (up to 6+ hours).
-  - Top sessions breakdown.
-- **Pixel Blast background**
-  - A lightweight, animated WebGL pixel background (Three.js + postprocessing)
-    rendered behind the UI, with ripple effects on click.
-- **Custom window chrome** with native window controls and a clean titlebar.
+## Fitur
 
-## Screenshots
+- **Tiga mode timer**
+  - **Pomodoro** — siklus fokus / istirahat pendek / istirahat panjang, durasi & interval bisa diatur
+  - **Timer** — countdown dengan durasi bebas
+  - **Stopwatch** — hitung naik tanpa batas
+  - Auto-start antar tahap, suara UI opsional, progress ring di sekeliling jam
+- **Perencanaan tugas**
+  - Tugas dikelompokkan dalam bucket mingguan (rolling 4 minggu)
+  - Tambah, edit, selesaikan, hapus, drag untuk reorder, dan tempelkan sesi ke tugas
+- **Riwayat**
+  - Log lengkap setiap sesi: durasi, tugas, dan timestamp
+  - **Export / import** riwayat sebagai JSON untuk backup atau pindah device
+- **Statistik**
+  - Kartu ringkasan: total waktu fokus, menit hari ini, streak, sesi hari ini
+  - **Grafik 7 hari** (minggu ini vs minggu lalu + garis rata-rata)
+  - **Kalender bulanan** heatmap
+  - **Heatmap tahunan** dengan skala warna 2 jam (hingga 6+ jam)
+  - Breakdown sesi teratas + radar chart riwayat
+- **Akun & sinkronisasi**
+  - Daftar / masuk dengan email + password (Supabase Auth)
+  - Data dipisah per `user_id`, hanya pemilik yang bisa baca/tulis (RLS)
+  - Mode tamu tetap bisa pakai semua fitur secara lokal
+- **PWA**
+  - Installable (manifest + ikon 192/512 + maskable)
+  - Offline via `sw.js`, shortcut "Mulai Fokus / Tugas / Statistik"
+- **Pixel Blast background** — background piksel animasi (Three.js + postprocessing) dengan efek ripple saat diklik
+
+## Screenshot
 
 ### Fokus
 
@@ -63,107 +69,143 @@ Built with Electron, React, and TypeScript.
 
 ## Tech Stack
 
-| Layer     | Technology                                            |
-| --------- | ----------------------------------------------------- |
-| Runtime   | [Electron](https://www.electronjs.org/)               |
-| UI        | [React](https://react.dev/) 19                        |
-| Language  | [TypeScript](https://www.typescriptlang.org/)         |
-| Build     | [electron-vite](https://electron-vite.org/) + Vite 7  |
-| Charts    | [Recharts](https://recharts.org/)                     |
-| Effects   | [Three.js](https://threejs.org/) + [postprocessing](https://github.com/pmndrs/postprocessing) |
-| Animation | [Motion](https://motion.dev/)                         |
-| Packaging | [electron-builder](https://www.electron.build/)       |
+| Layer    | Teknologi |
+| -------- | --------- |
+| UI       | [React](https://react.dev/) 19 |
+| Bahasa   | [TypeScript](https://www.typescriptlang.org/) |
+| Build    | [Vite](https://vitejs.dev/) 7 |
+| Backend  | [Supabase](https://supabase.com/) (Auth + Postgres + Realtime) |
+| Charts   | [Recharts](https://recharts.org/) |
+| Efek     | [Three.js](https://threejs.org/) + [postprocessing](https://github.com/pmndrs/postprocessing) |
+| Animasi  | [Motion](https://motion.dev/) |
+| Hosting  | [Vercel](https://vercel.com/) |
+| PWA      | Service worker kustom (`public/sw.js`) + Web App Manifest |
 
-## Getting Started
+## Mulai Cepat
 
-### Prerequisites
+### Prasyarat
 
 - [Node.js](https://nodejs.org/) 20+
-- A package manager — [pnpm](https://pnpm.io/) is recommended (a `pnpm-lock.yaml`
-  is committed), but npm works too.
+- npm (bawaan Node) — tidak perlu pnpm untuk versi web ini
+- Akun [Supabase](https://supabase.com/) gratis (untuk auth + database)
 
-### Install
-
-```bash
-pnpm install
-```
-
-### Development
+### 1. Install
 
 ```bash
-pnpm dev
+npm install
 ```
 
-Runs the app with hot module reload (electron-vite dev server + Electron).
-
-### Build
+### 2. Siapkan environment
 
 ```bash
-# Typecheck + production build (output to out/)
-pnpm build
-
-# Platform installers
-pnpm build:win     # Windows (NSIS installer)
-pnpm build:mac     # macOS (DMG)
-pnpm build:linux   # Linux (AppImage / snap / deb)
-
-# Unpacked build without an installer
-pnpm build:unpack
+copy .env.example .env
 ```
 
-## Project Structure
+Isi `.env`:
+
+```ini
+VITE_SUPABASE_URL=https://xxx.supabase.co
+VITE_SUPABASE_ANON_KEY=isi_anon_key_dari_dashboard
+```
+
+> Ambil dari Supabase Dashboard → Project Settings → API.
+> Jangan pernah taruh `service_role` key dengan prefix `VITE_` — itu akan terkirim ke browser.
+
+### 3. Siapkan database
+
+Buka Supabase Dashboard → SQL Editor → New Query, lalu jalankan salah satu:
+
+- **Install baru:** isi dari `supabase/schema.sql`
+- **Migrasi dari versi lama (tanpa `user_id`):** isi dari `supabase/migration_account_system.sql`
+
+Pastikan juga di dashboard:
+
+- Authentication → Providers → Email = **Enabled**
+- Kalau tidak mau verifikasi email: Email → "Confirm email" = **OFF**
+- Database → Replication → nyalakan Realtime untuk `tasks`, `sessions`, `session_list` (untuk sync antar device)
+
+### 4. Development
+
+```bash
+npm run dev
+```
+
+Buka http://localhost:5173
+
+### 5. Build & preview
+
+```bash
+npm run build
+npm run preview
+```
+
+## Deploy ke Vercel
+
+1. Push repo ini ke GitHub
+2. Di [vercel.com](https://vercel.com) → Add New → Project → import repo
+3. Framework preset: **Vite** (otomatis terdeteksi)
+4. Tambahkan Environment Variables:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+5. Deploy — `vercel.json` sudah mengatur rewrite SPA (`/(.*)` → `/index.html`) dan header cache untuk `sw.js`, manifest, ikon, dan assets
+
+## Struktur Proyek
 
 ```
-├── build/                    # Build resources (icons, entitlements, installer assets)
-├── resources/                # Bundled resources (app icon)
+├── public/                     # Aset statis + PWA (manifest, sw.js, icons/)
+├── supabase/
+│   ├── schema.sql              # Skema fresh-install (dengan sistem akun + RLS)
+│   └── migration_account_system.sql  # Migrasi DB lama → sistem akun
 ├── src/
-│   ├── main/                 # Electron main process (window, IPC, data access)
-│   │   └── index.ts
-│   ├── preload/              # Preload scripts (context bridge, IPC surface)
-│   └── renderer/             # React UI
+│   └── renderer/               # Root Vite
+│       ├── index.html
 │       └── src/
-│           ├── components/   # Views, charts, backgrounds, icons
+│           ├── components/     # Views, charts, backgrounds, icons
 │           │   ├── TimerView.tsx
 │           │   ├── TasksView.tsx
 │           │   ├── HistoryView.tsx
 │           │   ├── StatsView.tsx
-│           │   ├── WeekAreaChart.tsx   # 7-day comparison chart
-│           │   ├── MonthCalendar.tsx   # monthly calendar heat map
-│           │   ├── Heatmap.tsx         # yearly heatmap
-│           │   └── PixelBlast.tsx      # WebGL pixel background
-│           ├── lib/          # State store, persistence, helpers
-│           ├── assets/       # Global styles
-│           └── App.tsx
-├── electron-builder.yml      # electron-builder configuration
-└── electron.vite.config.ts   # electron-vite configuration
+│           │   ├── WeekAreaChart.tsx       # Grafik perbandingan 7 hari
+│           │   ├── HistoryRadarChart.tsx   # Radar chart riwayat
+│           │   ├── MonthCalendar.tsx       # Kalender heatmap bulanan
+│           │   ├── Heatmap.tsx             # Heatmap tahunan
+│           │   ├── AuthModal.tsx           # Login / daftar
+│           │   └── PixelBlast.tsx          # Background WebGL
+│           ├── lib/            # Auth, store, supabase client, utils
+│           │   ├── auth.tsx
+│           │   ├── store.tsx
+│           │   └── supabase.ts
+│           ├── App.tsx
+│           └── types.ts
+├── vercel.json                 # Rewrite SPA + header cache
+└── vite.config.ts              # Root src/renderer, output dist/
 ```
 
-## Data & Privacy
+## Data & Privasi
 
-All data lives **locally** in the renderer's `localStorage` — no accounts, no
-cloud sync, nothing leaves your machine. Use the **export** button in the History
-view to back up your sessions as a JSON file or import it on another device.
+- **Sudah login:** data tersimpan di Supabase Postgres, dipisah per `user_id` dengan Row Level Security — tiap user hanya bisa akses baris miliknya sendiri. `localStorage` dipakai sebagai cache offline-first.
+- **Mode tamu (belum login):** semua data hanya di `localStorage` — tidak ada yang terkirim ke server.
+- Gunakan tombol **export** di view Riwayat untuk backup sesi sebagai file JSON, atau **import** untuk pindah device.
 
-## Useful Commands
+## Perintah Berguna
 
-| Command                 | Description                                  |
-| ----------------------- | -------------------------------------------- |
-| `pnpm dev`              | Start the app in development mode            |
-| `pnpm start`            | Preview the production build                 |
-| `pnpm typecheck`        | Type-check main, preload, and renderer code  |
-| `pnpm lint`             | Run ESLint (with prettier rules)             |
-| `pnpm format`           | Format all source files with Prettier        |
-| `pnpm build`            | Typecheck and build for production           |
-| `pnpm build:win`        | Build the Windows installer                  |
+| Perintah           | Deskripsi                              |
+| ------------------ | -------------------------------------- |
+| `npm run dev`      | Jalankan dev server (http://localhost:5173) |
+| `npm run build`    | Typecheck + build produksi ke `dist/`  |
+| `npm run preview`  | Preview hasil build produksi           |
+| `npm run typecheck`| Type-check tanpa emit                  |
+| `npm run lint`     | Jalankan ESLint                        |
+| `npm run format`   | Format semua file dengan Prettier      |
 
 ## Roadmap
 
-- [ ] Desktop notifications when a focus or break stage ends
-- [ ] Global timer visibility (always-on-top mini window / tray)
-- [ ] Session tagging & filtering in history
-- [ ] Export statistics as CSV/PNG
-- [ ] Auto-updates
+- [ ] Notifikasi desktop saat tahap fokus / istirahat selesai
+- [ ] Mini window always-on-top / tray
+- [ ] Tag & filter sesi di riwayat
+- [ ] Export statistik sebagai CSV/PNG
+- [ ] Login sosial (Google / GitHub via Supabase)
 
-## License
+## Lisensi
 
 MIT
