@@ -15,7 +15,9 @@ export function AnimatedInView({
   onClick?: () => void
 }): React.JSX.Element {
   const ref = useRef<HTMLElement | null>(null)
-  const inView = useInView(ref, { amount: 0.5, once: false })
+  // Sensitif: muncul begitu 10% bagian atas elemen menyentuh viewport,
+  // plus 15% area di bawah fold sudah dianggap masuk
+  const inView = useInView(ref, { amount: 0.1, margin: '0px 0px 15% 0px', once: false })
   const common = {
     className,
     onClick,

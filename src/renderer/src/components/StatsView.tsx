@@ -56,7 +56,6 @@ export function StatsView(): React.JSX.Element {
     <div className="view">
       <header className="view__header">
         <h1>Statistik</h1>
-        <p className="view__sub">Ringkasan kebiasaan fokusmu</p>
       </header>
 
       <div className="stat-grid">

@@ -4,6 +4,7 @@ import { useStore } from '../lib/storeContext'
 import { AnimatedInView } from './AnimatedInView'
 import { dayKey, fmtDay, fmtDuration, fmtTime, isToday, startOfDay } from '../lib/utils'
 import { CustomSelect } from './CustomSelect'
+import { DayTimelineGrid } from './DayTimelineGrid'
 import { DatePicker } from './DatePicker'
 import { HistoryRadarChart } from './HistoryRadarChart'
 import { ChevronLeftIcon, ChevronRightIcon, ExportIcon, ImportIcon, PlusIcon } from './icons'
@@ -296,22 +297,12 @@ export function HistoryView(): React.JSX.Element {
     showNotice(res.count > 0 ? `${res.count} sesi diimpor` : 'Tidak ada sesi baru di file tersebut')
   }
 
-  const groups = useMemo(() => {
-    const sorted = [...sessions].sort((a, b) => b.completedAt - a.completedAt)
-    const map = new Map<string, typeof sorted>()
-    for (const s of sorted) {
-      const key = dayKey(s.completedAt)
-      const list = map.get(key)
-      if (list) list.push(s)
-      else map.set(key, [s])
-    }
-    return [...map.entries()].map(([key, list]) => ({
-      key,
-      label: isToday(list[0].completedAt) ? 'Hari ini' : fmtDay(list[0].completedAt),
-      total: list.reduce((acc, s) => acc + s.seconds, 0),
-      list
-    }))
-  }, [sessions])
+  const daySessions = useMemo(() => {
+    const day = dayKey(chartDay)
+    return sessions
+      .filter((s) => dayKey(s.completedAt) === day)
+      .sort((a, b) => b.completedAt - a.completedAt)
+  }, [sessions, chartDay])
 
   return (
     <div className="view">
@@ -357,32 +348,37 @@ export function HistoryView(): React.JSX.Element {
       <AnimatedInView as="section" className="panel">
         <div className="panel__head">
           <h2>Pola Harian</h2>
-          <div className="day-nav">
-            <button
-              type="button"
-              className="icon-btn icon-btn--bordered"
-              aria-label="Hari sebelumnya"
-              title="Hari sebelumnya"
-              onClick={() => shiftChartDay(-1)}
-            >
-              <ChevronLeftIcon size={16} />
-            </button>
-            <span className="day-nav__label">
-              {isChartToday ? 'Hari ini' : fmtDay(chartDay)}
-            </span>
-            <button
-              type="button"
-              className="icon-btn icon-btn--bordered"
-              aria-label="Hari berikutnya"
-              title="Hari berikutnya"
-              disabled={isChartToday}
-              onClick={() => shiftChartDay(1)}
-            >
-              <ChevronRightIcon size={16} />
-            </button>
+          <div className="panel__head-right">
+            <div className="day-nav">
+              <button
+                type="button"
+                className="icon-btn icon-btn--bordered"
+                aria-label="Hari sebelumnya"
+                title="Hari sebelumnya"
+                onClick={() => shiftChartDay(-1)}
+              >
+                <ChevronLeftIcon size={16} />
+              </button>
+              <span className="day-nav__label">
+                {isChartToday ? 'Hari ini' : fmtDay(chartDay)}
+              </span>
+              <button
+                type="button"
+                className="icon-btn icon-btn--bordered"
+                aria-label="Hari berikutnya"
+                title="Hari berikutnya"
+                disabled={isChartToday}
+                onClick={() => shiftChartDay(1)}
+              >
+                <ChevronRightIcon size={16} />
+              </button>
+            </div>
           </div>
         </div>
-        <HistoryRadarChart dayStart={chartDay} />
+        <div className="charts-row">
+          <HistoryRadarChart dayStart={chartDay} />
+          <DayTimelineGrid dayStart={chartDay} />
+        </div>
       </AnimatedInView>
 
       {manualOpen && (
@@ -482,24 +478,30 @@ export function HistoryView(): React.JSX.Element {
 
       {notice && <p className="history-notice">{notice}</p>}
 
-      {groups.map((group) => (
-        <section key={group.key} className="history-group">
+      {daySessions.length > 0 && (
+        <section className="history-group">
           <AnimatedInView className="history-group__head">
-            <h2>{group.label}</h2>
-            <span className="history-group__total">{fmtDuration(group.total)}</span>
+            <h2>{isToday(chartDay) ? 'Hari ini' : fmtDay(chartDay)}</h2>
+            <span className="history-group__total">
+              {fmtDuration(daySessions.reduce((acc, s) => acc + s.seconds, 0))}
+            </span>
           </AnimatedInView>
           <ul className="session-list">
-            {group.list.map((s) => (
+            {daySessions.map((s) => (
               <SessionRow key={s.id} session={s} />
             ))}
           </ul>
         </section>
-      ))}
+      )}
 
-      {sessions.length === 0 && (
+      {daySessions.length === 0 && (
         <div className="empty-state">
-          <p>Belum ada sesi fokus.</p>
-          <p className="empty-state__sub">Mulai timer di halaman Focus untuk mencatat sesi.</p>
+          <p>{sessions.length === 0 ? 'Belum ada sesi fokus.' : 'Tidak ada sesi tercatat pada hari ini.'}</p>
+          <p className="empty-state__sub">
+            {sessions.length === 0
+              ? 'Mulai timer di halaman Focus untuk mencatat sesi.'
+              : 'Geser navigasi hari di panel Pola Harian untuk melihat hari lain.'}
+          </p>
         </div>
       )}
     </div>

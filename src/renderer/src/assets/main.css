@@ -1957,7 +1957,6 @@ button {
   flex-direction: column;
   gap: 6px;
   padding: 16px 0;
-  border-top: 2px solid var(--carbon);
 }
 
 .stat-card__label {
@@ -2014,6 +2013,107 @@ button {
   margin-bottom: 16px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--fog);
+}
+
+.panel__head h2 {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--carbon);
+}
+
+.panel__head-right {
+  display: flex;
+  align-items: baseline;
+  gap: 20px;
+}
+
+/* ---------- Grid timeline harian (per 10 menit) ---------- */
+
+.charts-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 48px;
+}
+
+.charts-row > * {
+  min-width: 0;
+}
+
+.charts-row .history-radar {
+  flex: 1 1 auto;
+  align-self: center;
+}
+
+.charts-row .day-grid {
+  flex: 0 0 auto;
+  width: min(320px, 44%);
+}
+
+/* Grid timeline harian — garis sel, kolom & label dari SATU sumber:
+   garis vertikal = border-left tiap .tl-cell, garis horizontal =
+   border-top tiap .tl-row; grid ditutup border-right/bottom terakhir.
+   Semua 1px, sangat samar (#EDEDF3), box-sizing border-box. */
+.day-grid {
+  --tl-line: #ededf3;
+  --row-h: 17px;
+  width: 100%;
+  height: calc(24 * var(--row-h));
+  box-sizing: border-box;
+}
+
+.tl-row {
+  display: grid;
+  grid-template-columns: 34px repeat(6, 1fr);
+  height: var(--row-h);
+  box-sizing: border-box;
+  border-top: 1px solid var(--tl-line);
+}
+
+.tl-row:last-child {
+  border-bottom: 1px solid var(--tl-line);
+}
+
+.tl-hour {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 6px;
+  font-size: 9px;
+  line-height: 1;
+  color: var(--slate);
+}
+
+.tl-cell {
+  position: relative;
+  display: block;
+  height: 100%;
+  border: 0;
+  border-left: 1px solid var(--tl-line);
+  border-radius: 0;
+  background: transparent;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.tl-cell:last-child {
+  border-right: 1px solid var(--tl-line);
+}
+
+.tl-cell__fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: block;
+  background: var(--ember);
+  border-radius: 0;
+  box-sizing: border-box;
+  min-width: 2px;
+}
+
+.tl-cell__fill + .tl-cell__fill {
+  border-left: 1px solid #ededf3;
 }
 
 .panel__head h2 {
@@ -2562,6 +2662,20 @@ button {
 
 /* Mobile landscape & large phones */
 @media (max-width: 720px) {
+  .charts-row {
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  .charts-row .day-grid {
+    width: 100%;
+    max-width: none;
+  }
+
+  .charts-row .history-radar {
+    align-self: stretch;
+  }
+
   .topnav {
     gap: 12px;
     padding: 0 14px;
