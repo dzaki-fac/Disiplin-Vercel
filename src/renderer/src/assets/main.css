@@ -50,18 +50,21 @@ button {
 
 .app {
   position: relative;
-  display: block;
+  display: flex;
+  flex-direction: column;
   height: 100vh;
   height: 100dvh;
-  overflow-y: auto;
-  overscroll-behavior-y: contain;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .scroll-wrap {
   position: relative;
-  min-height: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .app-bg {
@@ -72,15 +75,13 @@ button {
   bottom: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.55;
+  opacity: 0.3;
 }
 
 /* ---------- Top navigation ---------- */
 
 .topnav {
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  position: relative;
   display: flex;
   align-items: center;
   gap: 32px;
@@ -153,7 +154,7 @@ button {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .sync-indicator {
@@ -168,6 +169,13 @@ button {
   letter-spacing: 0.04em;
   color: var(--slate);
   transition: border-color 150ms var(--ease), opacity 150ms var(--ease);
+}
+
+/* Dot polos — kondisi tersinkron, tanpa kotak/label */
+.sync-indicator.is-quiet {
+  border-color: transparent;
+  background: transparent;
+  padding: 4px 0;
 }
 
 .sync-indicator:disabled {
@@ -191,9 +199,10 @@ button {
   white-space: nowrap;
 }
 
+/* Teks link tanpa border — menyatu dengan bahasa ghost-nav (DESIGN.md) */
 .topnav__dday {
-  padding: 4px 8px;
-  border: 1px solid var(--ash);
+  padding: 4px 2px;
+  border: none;
   border-radius: var(--radius);
   background: transparent;
   font-size: 11px;
@@ -202,11 +211,10 @@ button {
   letter-spacing: 0.1em;
   color: var(--slate);
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
+  transition: color 0.15s;
 }
 
 .topnav__dday:hover {
-  border-color: var(--ember);
   color: var(--ember);
 }
 
@@ -261,8 +269,8 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 8px;
-  border: 1px solid var(--ash);
+  padding: 4px 2px;
+  border: none;
   border-radius: var(--radius);
   background: transparent;
   font-size: 11px;
@@ -271,12 +279,11 @@ button {
   letter-spacing: 0.1em;
   color: var(--slate);
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
+  transition: color 0.15s;
   white-space: nowrap;
 }
 
 .account-btn:hover {
-  border-color: var(--ember);
   color: var(--ember);
 }
 
@@ -411,6 +418,17 @@ button {
 .content {
   position: relative;
   z-index: 1;
+  min-height: 100%; /* wash ikut memenuhi tinggi scroll area */
+  transition: background-color 200ms var(--ease);
+}
+
+/* Fokus mode: wash warna memenuhi seluruh main.content */
+.content:has(.timer-view.is-running) {
+  background: rgb(212 48 8 / 0.07); /* wash ember tipis — konsisten dgn arc ring */
+}
+
+.content:has(.timer-view.is-paused) {
+  background: rgb(120 120 120 / 0.08); /* wash abu netral — "menahan" */
 }
 
 .view {
@@ -1023,20 +1041,32 @@ button {
   gap: 64px;
   width: 100%;
   padding: 48px 40px;
-  background: rgb(255 255 255 / 0.88);
-  border: 1px solid var(--ash);
-  border-radius: var(--radius);
-  transition: background-color 200ms var(--ease), border-color 200ms var(--ease);
+  transition: background-color 200ms var(--ease);
 }
 
 .timer-main.is-running {
-  background: rgb(37 99 235 / 0.13);
-  border-color: rgb(37 99 235 / 0.35);
+  flex-direction: column;
+  gap: 24px;
+  padding: 32px 28px;
 }
 
 .timer-main.is-paused {
-  background: rgb(124 58 237 / 0.13);
-  border-color: rgb(124 58 237 / 0.35);
+  flex-direction: column;
+  gap: 24px;
+  padding: 32px 28px;
+}
+
+.timer-main.is-running .timer-main__side,
+.timer-main.is-paused .timer-main__side {
+  align-items: center;
+  text-align: center;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.timer-main.is-running .controls,
+.timer-main.is-paused .controls {
+  align-items: center;
 }
 
 .timer-main__ring {
@@ -1107,6 +1137,13 @@ button {
 
 .ring {
   position: relative;
+  width: min(280px, 72vw);
+  max-width: 280px;
+  height: min(280px, 72vw);
+  max-height: 280px;
+  transition:
+    width 200ms var(--ease),
+    height 200ms var(--ease);
 }
 
 .ring__content {
@@ -1120,7 +1157,7 @@ button {
 }
 
 .ring__mode {
-  font-size: 10px;
+  font-size: 15px;
   font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.16em;
@@ -1135,7 +1172,9 @@ button {
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
   color: var(--carbon);
-  transition: color 200ms var(--ease);
+  transition:
+    color 200ms var(--ease),
+    font-size 200ms var(--ease);
 }
 
 .ring__clock.is-idle {
@@ -1145,6 +1184,19 @@ button {
 .timer-main.is-running .ring__clock,
 .timer-main.is-paused .ring__clock {
   color: var(--carbon);
+  font-size: 80px;
+}
+
+.timer-main.is-running .ring__cycle {
+  font-size: 18px;
+}
+
+.timer-main.is-running .ring,
+.timer-main.is-paused .ring {
+  width: min(440px, 84vw);
+  max-width: 440px;
+  height: min(440px, 84vw);
+  max-height: 440px;
 }
 
 .ring__cycle {
@@ -1195,25 +1247,12 @@ button {
   color: var(--slate);
 }
 
-.session-now__quote {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--slate);
-  font-style: italic;
-  max-width: 280px;
-}
-
-.session-now__quote-author {
-  font-style: normal;
-  opacity: 0.7;
-}
-
 .controls {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 18px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
 }
 
 .controls .cta--primary {
@@ -2256,11 +2295,6 @@ button {
   background: var(--fog);
 }
 
-.heatmap__cell:hover {
-  outline: 1px solid var(--slate);
-  outline-offset: 1px;
-}
-
 .heatmap__cell.is-future {
   opacity: 0.4;
 }
@@ -2428,36 +2462,15 @@ button {
   margin: 0 4px;
 }
 
-/* ---------- Scrollbars (minimal, themed) ---------- */
+/* ---------- Scrollbars: overlay style — tanpa track/background ---------- */
 
 * {
-  scrollbar-width: thin;
-  scrollbar-color: #d6d6d6 transparent;
+  scrollbar-width: none; /* Firefox */
 }
 
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #d6d6d6;
-  border: 3px solid transparent;
-  background-clip: padding-box;
-  border-radius: var(--radius-pill);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #9c9c9c;
-  background-clip: padding-box;
+  width: 0;
+  height: 0;
 }
 
 /* ---------- Bottom navigation (mobile) ---------- */
@@ -2603,11 +2616,6 @@ button {
     text-align: center;
   }
 
-  .session-now__quote {
-    max-width: 100%;
-    text-align: center;
-  }
-
   .controls {
     align-items: center;
     flex-direction: row;
@@ -2634,6 +2642,11 @@ button {
 
   .ring__clock {
     font-size: 44px;
+  }
+
+  .timer-main.is-running .ring__clock,
+  .timer-main.is-paused .ring__clock {
+    font-size: clamp(52px, 14vw, 58px);
   }
 
   .add-task {
@@ -2802,8 +2815,13 @@ button {
     font-size: clamp(36px, 11vw, 44px);
   }
 
+  .timer-main.is-running .ring__clock,
+  .timer-main.is-paused .ring__clock {
+    font-size: clamp(46px, 13vw, 52px);
+  }
+
   .ring__mode {
-    font-size: 9px;
+    font-size: 11px;
   }
 
   .session-manager__row,
@@ -3016,6 +3034,11 @@ button {
 @media (max-width: 340px) {
   .ring__clock {
     font-size: 32px;
+  }
+
+  .timer-main.is-running .ring__clock,
+  .timer-main.is-paused .ring__clock {
+    font-size: 38px;
   }
 
   .view__header h1 {

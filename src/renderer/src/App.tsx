@@ -35,6 +35,7 @@ function Shell(): React.JSX.Element {
 
   return (
     <div className="app">
+      <TopNav active={view} onChange={setView} />
       <div className="scroll-wrap">
         <div className="app-bg" aria-hidden="true">
           <PixelBlast
@@ -53,7 +54,6 @@ function Shell(): React.JSX.Element {
             transparent
           />
         </div>
-        <TopNav active={view} onChange={setView} />
         <main className="content">
           {view === 'timer' && <TimerView />}
           {view === 'tasks' && <TasksView />}

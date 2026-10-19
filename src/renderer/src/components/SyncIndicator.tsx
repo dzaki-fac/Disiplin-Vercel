@@ -56,18 +56,20 @@ export function SyncIndicator(): React.JSX.Element {
   }
 
   const clickable = isOnline && pending > 0 && !syncing
+  // Kondisi normal — cukup dot saja, info lengkapi lewat title tooltip
+  const quiet = isOnline && !syncing && pending === 0
 
   return (
     <button
       type="button"
-      className="sync-indicator"
+      className={`sync-indicator${quiet ? ' is-quiet' : ''}`}
       onClick={handleClick}
       disabled={!clickable}
       title={clickable ? 'Klik untuk sync sekarang' : label}
       aria-label={label}
     >
       <span className="sync-indicator__dot" style={{ background: dotColor }} />
-      <span className="sync-indicator__label">{label}</span>
+      {!quiet && <span className="sync-indicator__label">{label}</span>}
     </button>
   )
 }

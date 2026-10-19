@@ -570,6 +570,7 @@ export function AppProvider({ children }: { children: ReactNode }): React.JSX.El
   }, [])
 
   const beginSession = useCallback((title: string) => {
+    if (timerRef.current.phase !== 'idle') return
     const s = settingsRef.current
     setTimer((prev) => ({
       ...prev,
@@ -627,6 +628,7 @@ export function AppProvider({ children }: { children: ReactNode }): React.JSX.El
   }, [])
 
   const deleteSessionItem = useCallback((id: string) => {
+    if (timerRef.current.phase !== 'idle') return
     const current = sessionListRef.current.find((s) => s.id === id)
     if (!current) return
     setSessionList((prev) => prev.filter((s) => s.id !== id))

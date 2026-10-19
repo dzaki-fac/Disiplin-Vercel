@@ -7,15 +7,8 @@ const DAY_LABELS: Record<number, string> = { 1: 'S', 3: 'R', 5: 'J' }
 const WEEKS = 53
 
 const monthShortFmt = new Intl.DateTimeFormat('id-ID', { month: 'short' })
-const fullDateFmt = new Intl.DateTimeFormat('id-ID', {
-  weekday: 'short',
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric'
-})
 
 const monthShort = (ts: number): string => monthShortFmt.format(ts)
-const fullDate = (ts: number): string => fullDateFmt.format(ts)
 
 const levelFor = (sec: number): number =>
   sec <= 0 ? 0 : sec < 7200 ? 1 : sec < 14400 ? 2 : sec < 21600 ? 3 : 4
@@ -107,20 +100,14 @@ export function Heatmap({ sessions }: HeatmapProps): React.JSX.Element {
             <div className="heatmap__weeks">
               {data.weeks.map((column, wi) => (
                 <div key={wi} className="heatmap__week">
-                  {column.map((cell, di) => {
-                    const title =
-                      fullDate(cell.ts) +
-                      (cell.seconds > 0 ? ` · ${fmtDuration(cell.seconds)}` : '')
-                    return (
-                      <span
-                        key={di}
-                        className={`heatmap__cell heatmap__cell--${cell.level}${
-                          cell.isFuture ? ' is-future' : ''
-                        }`}
-                        title={title}
-                      />
-                    )
-                  })}
+                  {column.map((cell, di) => (
+                    <span
+                      key={di}
+                      className={`heatmap__cell heatmap__cell--${cell.level}${
+                        cell.isFuture ? ' is-future' : ''
+                      }`}
+                    />
+                  ))}
                 </div>
               ))}
             </div>

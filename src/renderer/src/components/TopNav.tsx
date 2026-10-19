@@ -98,7 +98,7 @@ export function TopNav({ active, onChange }: TopNavProps): React.JSX.Element {
           )
         })}
       </nav>
-      <div className="topnav__right" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div className="topnav__right">
         <SyncIndicator />
         <button type="button" className="topnav__dday" onClick={() => setOpen((o) => !o)}>
           {diff !== null ? (
@@ -110,7 +110,7 @@ export function TopNav({ active, onChange }: TopNavProps): React.JSX.Element {
               <>D+{Math.abs(diff)}</>
             )
           ) : (
-            <>Atur D-Day</>
+            <>D-Day</>
           )}
         </button>
 

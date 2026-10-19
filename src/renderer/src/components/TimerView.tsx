@@ -5,7 +5,6 @@ import { useStore } from '../lib/storeContext'
 import { fmtClock, isToday } from '../lib/utils'
 import { AnimatedInView } from './AnimatedInView'
 import { ProgressRing } from './ProgressRing'
-import { randomQuote } from '../data/quotes'
 
 const MODE_META: Record<TimerMode, { label: string; sub: string }> = {
   stopwatch: { label: 'Stopwatch', sub: 'Stopwatch' },
@@ -139,7 +138,6 @@ export function TimerView(): React.JSX.Element {
   } = useStore()
 
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [quote, setQuote] = useState(randomQuote)
 
   const isStopwatch = timer.mode === 'stopwatch'
   const isPomodoro = timer.mode === 'pomodoro'
@@ -148,12 +146,6 @@ export function TimerView(): React.JSX.Element {
     isStopwatch && timer.phase === 'running' && timer.startAt !== null
       ? timer.elapsedMs + (now - timer.startAt)
       : timer.elapsedMs
-  const HOUR_MS = 3_600_000
-  const progress = isStopwatch
-    ? Math.min(1, elapsedMs / HOUR_MS)
-    : duration > 0
-      ? 1 - remainingMs / duration
-      : 0
   const todaySeconds = sessions
     .filter((s) => isToday(s.completedAt))
     .reduce((a, s) => a + s.seconds, 0)
@@ -166,14 +158,16 @@ export function TimerView(): React.JSX.Element {
     (isPomodoro && timer.stage === 'focus' && timer.phase === 'running' ? 1 : 0)
 
   const running = timer.phase === 'running'
+  const locked = timer.phase !== 'idle'
 
-  useEffect(() => {
-    const id = window.setInterval(() => setQuote(randomQuote()), 5 * 60_000)
-    return () => window.clearInterval(id)
-  }, [])
-
+  const HOUR_MS = 3_600_000
+  const progress = isStopwatch
+    ? Math.min(1, elapsedMs / HOUR_MS)
+    : duration > 0
+      ? 1 - remainingMs / duration
+      : 0
   const ringColor =
-    timer.phase === 'running'
+    running
       ? '#d43008'
       : timer.phase === 'paused'
         ? 'var(--violet)'
@@ -186,27 +180,32 @@ export function TimerView(): React.JSX.Element {
     : timer.phase !== 'idle' || (duration > 0 && remainingMs < duration)
 
   return (
-    <div className="view timer-view timer-view--active">
-      <div className="mode-tabs" role="tablist" aria-label="Mode timer">
-        {(Object.keys(MODE_META) as TimerMode[]).map((mode) => (
-          <button
-            key={mode}
-            type="button"
-            role="tab"
-            aria-selected={timer.mode === mode}
-            className={`mode-tab${timer.mode === mode ? ' is-active' : ''}`}
-            disabled={timer.phase !== 'idle'}
-            onClick={() => setTimerMode(mode)}
-          >
-            {MODE_META[mode].label}
-          </button>
-        ))}
-      </div>
+    <div
+      className={`view timer-view timer-view--active${
+        running ? ' is-running' : timer.phase === 'paused' ? ' is-paused' : ''
+      }`}
+    >
+      {!locked && (
+        <div className="mode-tabs" role="tablist" aria-label="Mode timer">
+          {(Object.keys(MODE_META) as TimerMode[]).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              role="tab"
+              aria-selected={timer.mode === mode}
+              className={`mode-tab${timer.mode === mode ? ' is-active' : ''}`}
+              onClick={() => setTimerMode(mode)}
+            >
+              {MODE_META[mode].label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div
         className={`timer-main${running ? ' is-running' : timer.phase === 'paused' ? ' is-paused' : ''}`}
       >
-        {!isStopwatch && (
+        {!isStopwatch && !locked && (
           <button
             type="button"
             className={`settings-toggle${settingsOpen ? ' is-open' : ''}`}
@@ -269,14 +268,6 @@ export function TimerView(): React.JSX.Element {
                 Belum ada sesi — pilih atau buat di bawah
               </span>
             )}
-            {quote.quote && (
-              <p className="session-now__quote">
-                &ldquo;{quote.quote}&rdquo;
-                {quote.author && (
-                  <span className="session-now__quote-author"> &mdash; {quote.author}</span>
-                )}
-              </p>
-            )}
           </div>
 
           <div className="controls">
@@ -291,8 +282,7 @@ export function TimerView(): React.JSX.Element {
               onClick={running ? pauseTimer : startTimer}
               data-sound-none
             >
-              {running ? 'Jeda' : 'Mulai'}
-              <span className="arrow">→</span>
+              {running ? 'Jeda' : timer.phase === 'paused' ? 'Lanjut' : 'Mulai'}
             </button>
             {isStopwatch ? (
               hasProgress && (
@@ -322,14 +312,14 @@ export function TimerView(): React.JSX.Element {
           </div>
         </div>
 
-        {!isStopwatch && settingsOpen && (
+        {!isStopwatch && !locked && settingsOpen && (
           <div className="settings-popover">
             <SettingsPanel mode={timer.mode} />
           </div>
         )}
       </div>
 
-      <SessionManager />
+      {!locked && <SessionManager />}
     </div>
   )
 }
