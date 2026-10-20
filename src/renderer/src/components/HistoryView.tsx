@@ -41,6 +41,32 @@ function normalizeTimeValue(v: string): string {
   return `${hh}:${mm}:${ss}`
 }
 
+const MAX_DAY_SEC = 23 * 3600 + 59 * 60 + 59
+
+/** Detik-hari -> string HH:MM:SS, di-box maksimum 23:59:59. */
+function fmtSecondsOfDay(total: number): string {
+  const s = clamp2(total, MAX_DAY_SEC)
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+}
+
+/** Saat jam mulai digeser (maju/mundur) durasi dipertahankan:
+ *  jam selesai ikut bergeser sepanjang durasi lama,
+ *  di-box maksimum 23:59:59. Durasi hanya berubah bila yang
+ *  diedit adalah jam selesai. */
+function shiftEndByDuration(newStart: string, oldStart: string, end: string): string {
+  const dur = Math.max(0, secondsOfDay(end) - secondsOfDay(oldStart))
+  return fmtSecondsOfDay(secondsOfDay(newStart) + dur)
+}
+
+const clamp2 = (n: number, max: number): number => Math.min(max, Math.max(0, n))
+
+/** Wadah waktu bersegmen (HH : MM : SS) — nilai selalu ada:
+ *  sel tidak pernah kosong, Backspace tidak menghapus segmen (kursor
+ *  mundur ke sel sebelumnya), angka dampai ke batas (23 / 59),
+ *  ↑/↓ memutar nilai, dua digit auto-lompat ke sel berikutnya. */
 function TimeInput({
   value,
   onChange,
@@ -50,23 +76,123 @@ function TimeInput({
   onChange: (v: string) => void
   label: string
 }): React.JSX.Element {
-  return (
+  const parts = useMemo((): number[] => {
+    const clean = value.replace(/\D+/g, ':')
+    const p = clean.split(':').filter(Boolean).map(Number)
+    return [clamp2(p[0] || 0, 23), clamp2(p[1] || 0, 59), clamp2(p[2] || 0, 59)]
+  }, [value])
+
+  const cells = useRef<(HTMLInputElement | null)[]>([])
+  // Digit yang sedang diketik di sel aktif; hilang saat blur sehingga
+  // sel selalu kembali menampilkan nilai (tidak pernah kosong)
+  const [draft, setDraft] = useState<{ i: number; digits: string } | null>(null)
+
+  const pad = (n: number): string => String(n).padStart(2, '0')
+  const fmt = (p: number[]): string => `${pad(p[0])}:${pad(p[1])}:${pad(p[2])}`
+
+  const commitAt = (i: number, n: number): void => {
+    const max = i === 0 ? 23 : 59
+    const next = [...parts]
+    next[i] = clamp2(n, max)
+    onChange(fmt(next))
+  }
+
+  const step = (i: number, dir: 1 | -1): void => {
+    const max = i === 0 ? 23 : 59
+    const n = parts[i] + dir
+    setDraft(null)
+    commitAt(i, n < 0 ? max : n > max ? 0 : n)
+  }
+
+  const focusCell = (i: number): void => {
+    const el = cells.current[Math.min(2, Math.max(0, i))]
+    if (el) el.focus()
+  }
+
+  const onCellBody = (i: number, raw: string): void => {
+    const digits = raw.replace(/\D/g, '')
+    // Tidak bisa dihapus: input kosong diabaikan, nilai segmen tetap
+    if (!digits) return
+    // DOM input sudah memuat digit-digit yang diketik (draft tampil di
+    // sel aktif), cukup ambil 2 digit terakhirlah
+    const typed = digits.slice(-2)
+    setDraft({ i, digits: typed })
+    if (typed.length === 2) {
+      // Dua digit cukup: commit di sel ini, tetap terfokus (dengan isi
+      // terseleksi) sehingga bisa lanjut dikoreksi atau pindah manual
+      setDraft(null)
+      commitAt(i, Number(typed))
+      const el = cells.current[i]
+      if (el) el.select()
+    }
+  }
+
+  const onCellBlur = (i: number): void => {
+    if (draft && draft.i === i) {
+      setDraft(null)
+      commitAt(i, Number(draft.digits))
+    }
+  }
+
+  const onCellKey = (i: number, e: React.KeyboardEvent<HTMLInputElement>): void => {
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      step(i, 1)
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      step(i, -1)
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault()
+      setDraft(null)
+      focusCell(i - 1)
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      if (draft && draft.i === i && draft.digits.length === 2) {
+        const num = Number(draft.digits)
+        setDraft(null)
+        commitAt(i, num)
+      }
+      focusCell(i + 1)
+    } else if (e.key === 'Backspace') {
+      e.preventDefault()
+      focusCell(i - 1)
+    }
+  }
+
+  const shown = (i: number): string =>
+    draft && draft.i === i ? draft.digits : pad(parts[i])
+
+  const seg = (i: 0 | 1 | 2, aria: string): React.JSX.Element => (
     <input
+      ref={(el) => {
+        cells.current[i] = el
+      }}
+      className="time-input__cell"
       type="text"
       inputMode="numeric"
-      placeholder="HH:MM:SS"
-      title="Format 24 jam (HH:MM:SS)"
-      maxLength={8}
-      aria-label={label}
-      value={value}
-      onChange={(e) => {
-        const sanitized = e.target.value.replace(/[^0-9:]/g, '').slice(0, 8)
-        onChange(sanitized)
-      }}
-      onBlur={() => {
-        onChange(normalizeTimeValue(value))
-      }}
+      autoComplete="off"
+      aria-label={`${label} ${aria}`}
+      value={shown(i)}
+      onFocus={(e) => e.target.select()}
+      onWheel={(e) => e.currentTarget.blur()}
+      onChange={(e) => onCellBody(i, e.target.value)}
+      onKeyDown={(e) => onCellKey(i, e)}
+      onBlur={() => onCellBlur(i)}
     />
+  )
+
+  return (
+    <span className="time-input" role="group" aria-label={label} title={label}>
+      {seg(0, 'jam')}
+      <span className="time-input__sep" aria-hidden="true">
+        :
+      </span>
+      {seg(1, 'menit')}
+      <span className="time-input__sep" aria-hidden="true">
+        :
+      </span>
+      {seg(2, 'detik')}
+    </span>
   )
 }
 
@@ -89,21 +215,25 @@ function EditPopup({
 
   const sSec = secondsOfDay(start)
   const eSec = secondsOfDay(end)
-  let diff = eSec - sSec
-  if (diff <= 0) diff += 24 * 3600
-  const totalSeconds = Math.max(1, diff)
+  const totalSeconds = Math.max(1, eSec - sSec)
+
+  // Geser jam mulai: durasi dipertahankan — jam selesai ikut maju/mundur
+  // sepanjang durasi lama, maksimal 23.59
+  const applyStart = (v: string): void => {
+    setEnd(shiftEndByDuration(v, start, end))
+    setStart(v)
+  }
 
   const commit = (): void => {
-    const startNorm = normalizeTimeValue(start)
-    const endNorm = normalizeTimeValue(end)
-    setStart(startNorm)
+    let endNorm = normalizeTimeValue(end)
+    if (secondsOfDay(endNorm) < secondsOfDay(start)) endNorm = normalizeTimeValue(start)
+    setStart(normalizeTimeValue(start))
     setEnd(endNorm)
     const baseDate = new Date(editDate)
     baseDate.setHours(0, 0, 0, 0)
     const baseTs = baseDate.getTime()
-    const startTs = baseTs + secondsOfDay(startNorm) * 1000
-    let endTs = baseTs + secondsOfDay(endNorm) * 1000
-    if (endTs <= startTs) endTs += 24 * 3600 * 1000
+    const startTs = baseTs + secondsOfDay(start) * 1000
+    const endTs = baseTs + secondsOfDay(endNorm) * 1000
     const seconds = Math.max(1, Math.round((endTs - startTs) / 1000))
     onSave({ taskTitle: title.trim() || null, seconds, startedAt: startTs, completedAt: endTs })
   }
@@ -150,7 +280,7 @@ function EditPopup({
         <div className="session-edit__times">
           <span className="session-edit__label">Jam mulai</span>
           <span className="session-edit__label">Jam selesai</span>
-          <TimeInput value={start} onChange={setStart} label="Jam mulai (format 24 jam)" />
+          <TimeInput value={start} onChange={applyStart} label="Jam mulai (format 24 jam)" />
           <TimeInput value={end} onChange={setEnd} label="Jam selesai (format 24 jam)" />
         </div>
 
@@ -176,6 +306,7 @@ function EditPopup({
 function SessionRow({ session }: { session: FocusSession }): React.JSX.Element {
   const { deleteSession, updateSession } = useStore()
   const [editing, setEditing] = useState(false)
+  const [confirming, setConfirming] = useState(false)
 
   return (
     <>
@@ -212,7 +343,8 @@ function SessionRow({ session }: { session: FocusSession }): React.JSX.Element {
             type="button"
             className="icon-btn icon-btn--danger"
             aria-label="Hapus sesi"
-            onClick={() => deleteSession(session.id)}
+            data-sound-none
+            onClick={() => setConfirming(true)}
           >
             <svg
               viewBox="0 0 24 24"
@@ -238,6 +370,39 @@ function SessionRow({ session }: { session: FocusSession }): React.JSX.Element {
           }}
           onCancel={() => setEditing(false)}
         />
+      )}
+      {confirming && (
+        <div className="modal-overlay" onMouseDown={() => setConfirming(false)}>
+          <div className="confirm-dialog" onMouseDown={(e) => e.stopPropagation()}>
+            <h3 className="confirm-dialog__title">Hapus sesi ini?</h3>
+            <p className="confirm-dialog__text">
+              Sesi{' '}
+              <strong>{session.taskTitle ?? 'Tanpa tugas'}</strong> ({fmtTime(session.startedAt)} –{' '}
+              {fmtTime(session.completedAt)}) akan dihapus permanen dari riwayat.
+            </p>
+            <div className="confirm-dialog__actions">
+              <button
+                type="button"
+                data-sound-none
+                className="cta cta--danger"
+                onClick={() => {
+                  deleteSession(session.id)
+                  setConfirming(false)
+                }}
+              >
+                Hapus
+              </button>
+              <button
+                type="button"
+                data-sound-none
+                className="cta cta--ghost"
+                onMouseDown={() => setConfirming(false)}
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )
@@ -274,7 +439,7 @@ export function HistoryView(): React.JSX.Element {
     setManualOpen(true)
   }
 
-  const isChartToday = chartDay >= startOfDay(new Date().getTime())
+  const isChartToday = chartDay === startOfDay(new Date().getTime())
   const shiftChartDay = (delta: number): void => {
     setChartDay((prev) => prev + delta * CHART_DAY_MS)
   }
@@ -367,7 +532,6 @@ export function HistoryView(): React.JSX.Element {
                 className="icon-btn icon-btn--bordered"
                 aria-label="Hari berikutnya"
                 title="Hari berikutnya"
-                disabled={isChartToday}
                 onClick={() => shiftChartDay(1)}
               >
                 <ChevronRightIcon size={16} />
@@ -377,7 +541,9 @@ export function HistoryView(): React.JSX.Element {
         </div>
         <div className="charts-row">
           <HistoryRadarChart dayStart={chartDay} />
-          <DayTimelineGrid dayStart={chartDay} />
+          <div className="history-card history-timeline">
+            <DayTimelineGrid dayStart={chartDay} />
+          </div>
         </div>
       </AnimatedInView>
 
@@ -387,16 +553,18 @@ export function HistoryView(): React.JSX.Element {
             className="session-edit"
             onSubmit={(e) => {
               e.preventDefault()
+              let endNorm = normalizeTimeValue(manualEnd)
+              if (secondsOfDay(endNorm) < secondsOfDay(manualStart)) {
+                endNorm = normalizeTimeValue(manualStart)
+              }
               const startNorm = normalizeTimeValue(manualStart)
-              const endNorm = normalizeTimeValue(manualEnd)
               setManualStart(startNorm)
               setManualEnd(endNorm)
               const baseDate = new Date(manualDate)
               baseDate.setHours(0, 0, 0, 0)
               const baseTs = baseDate.getTime()
               const startTs = baseTs + secondsOfDay(startNorm) * 1000
-              let endTs = baseTs + secondsOfDay(endNorm) * 1000
-              if (endTs <= startTs) endTs += 24 * 3600 * 1000
+              const endTs = baseTs + secondsOfDay(endNorm) * 1000
               const secs = Math.max(1, Math.round((endTs - startTs) / 1000))
               addManualSession(manualTitle.trim() || null, secs, startTs, endTs - startTs)
               setManualOpen(false)
@@ -437,7 +605,10 @@ export function HistoryView(): React.JSX.Element {
               <span className="session-edit__label">Jam selesai</span>
               <TimeInput
                 value={manualStart}
-                onChange={setManualStart}
+                onChange={(v) => {
+                  setManualEnd(shiftEndByDuration(v, manualStart, manualEnd))
+                  setManualStart(v)
+                }}
                 label="Jam mulai (format 24 jam)"
               />
               <TimeInput
@@ -452,8 +623,7 @@ export function HistoryView(): React.JSX.Element {
                 Durasi:{' '}
                 <strong>
                   {(() => {
-                    let diff = secondsOfDay(manualEnd) - secondsOfDay(manualStart)
-                    if (diff <= 0) diff += 24 * 3600
+                    const diff = secondsOfDay(manualEnd) - secondsOfDay(manualStart)
                     return fmtDuration(Math.max(1, diff))
                   })()}
                 </strong>

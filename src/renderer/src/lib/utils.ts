@@ -1,3 +1,5 @@
+import type { FocusSession } from '../types'
+
 export const uid = (): string => crypto.randomUUID()
 
 export const dayKey = (ts: number): string => new Date(ts).toDateString()
@@ -6,6 +8,38 @@ export const startOfDay = (ts: number): number => {
   const d = new Date(ts)
   d.setHours(0, 0, 0, 0)
   return d.getTime()
+}
+
+const DAY_MS = 24 * 3600 * 1000
+
+/** Sesi yang melewati tengah malam otomatis dipotong jadi beberapa sesi
+ *  per hari: `[22.00 – 00.10]` jadi `[22.00 – 23.59.59]` + `[00.00 – 00.10]`.
+ *  Sekali seputuh/di dalam satu hari → tetap satu sesi (id tidak berubah). */
+export function splitAcrossMidnight(session: FocusSession): FocusSession[] {
+  if (!(session.completedAt > session.startedAt)) return [session]
+  let a = session.startedAt
+  let cut = startOfDay(a) + DAY_MS
+  const pieces: FocusSession[] = []
+  while (session.completedAt > cut) {
+    pieces.push({
+      ...session,
+      id: uid(),
+      startedAt: a,
+      completedAt: cut - 1,
+      seconds: Math.max(1, Math.round((cut - 1 - a) / 1000))
+    })
+    a = cut
+    cut += DAY_MS
+  }
+  if (pieces.length === 0) return [session]
+  pieces.push({
+    ...session,
+    id: uid(),
+    startedAt: a,
+    completedAt: session.completedAt,
+    seconds: Math.max(1, Math.round((session.completedAt - a) / 1000))
+  })
+  return pieces
 }
 
 export function fmtClock(ms: number): string {

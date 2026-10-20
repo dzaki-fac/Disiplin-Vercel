@@ -3,7 +3,7 @@ import type { FocusSession, SessionItem, Task, TimerMode, TimerStage, TimerState
 import { defaultSettings, defaultTimer, durationFor } from './constants'
 import { StoreContext, type CompletionInfo } from './storeContext'
 import { useAuth } from './authContext'
-import { beep, clickPrimary, isToday, pauseBeep, uid } from './utils'
+import { beep, clickPrimary, isToday, pauseBeep, splitAcrossMidnight, uid } from './utils'
 import {
   clearLocalUserData,
   fetchSessionList,
@@ -697,8 +697,10 @@ export function AppProvider({ children }: { children: ReactNode }): React.JSX.El
         startedAt: Date.now() - elapsed,
         completedAt: Date.now()
       }
-      setSessions((prev) => [session, ...prev])
-      pushSessionUpsert(session)
+      // Sesi lintas hari otomatis dipotong per hari
+      const pieces = splitAcrossMidnight(session)
+      setSessions((prev) => [...pieces, ...prev])
+      pieces.forEach((p) => pushSessionUpsert(p))
       celebrate(session)
     }
     setTimer((prev) => ({
@@ -730,8 +732,10 @@ export function AppProvider({ children }: { children: ReactNode }): React.JSX.El
       startedAt: at - elapsed,
       completedAt: at
     }
-    setSessions((prev) => [session, ...prev])
-    pushSessionUpsert(session)
+    // Sesi lintas hari otomatis dipotong per hari
+    const pieces = splitAcrossMidnight(session)
+    setSessions((prev) => [...pieces, ...prev])
+    pieces.forEach((p) => pushSessionUpsert(p))
     celebrate(session)
     setTimer((prev) => ({
       ...prev,
@@ -787,9 +791,20 @@ export function AppProvider({ children }: { children: ReactNode }): React.JSX.El
       patch: Partial<Pick<FocusSession, 'taskTitle' | 'seconds' | 'startedAt' | 'completedAt'>>
     ) => {
       setSessions((prev) => {
-        const next = prev.map((s) => (s.id === id ? { ...s, ...patch } : s))
-        const updated = next.find((s) => s.id === id)
-        if (updated) pushSessionUpsert(updated)
+        const idx = prev.findIndex((s) => s.id === id)
+        if (idx < 0) return prev
+        const merged = { ...prev[idx], ...patch }
+        // Hasil edit lintas hari dipotong per hari; id lama diganti,
+        // kecuali hasilnya tetap satu sesi (id dipertahankan)
+        const pieces = splitAcrossMidnight(merged)
+        const replaced: FocusSession[] =
+          pieces.length > 1
+            ? pieces
+            : [{ ...merged, id }]
+        if (replaced.length > 1) pushSessionDelete(id)
+        replaced.forEach((p) => pushSessionUpsert(p))
+        const next = prev.slice()
+        next.splice(idx, 1, ...replaced)
         return next
       })
     },
@@ -806,8 +821,10 @@ export function AppProvider({ children }: { children: ReactNode }): React.JSX.El
         startedAt,
         completedAt: startedAt + durationMs
       }
-      setSessions((prev) => [session, ...prev])
-      pushSessionUpsert(session)
+      // Sesi manual lintas hari otomatis dipotong per hari
+      const pieces = splitAcrossMidnight(session)
+      setSessions((prev) => [...pieces, ...prev])
+      pieces.forEach((p) => pushSessionUpsert(p))
     },
     []
   )

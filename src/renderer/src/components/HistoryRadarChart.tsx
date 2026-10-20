@@ -124,7 +124,7 @@ export function HistoryRadarChart({ dayStart }: { dayStart: number }): React.JSX
   }
 
   return (
-    <div className="history-radar">
+    <div className="history-card history-radar">
       <div
         ref={wrapRef}
         className="history-radar__chart ring"

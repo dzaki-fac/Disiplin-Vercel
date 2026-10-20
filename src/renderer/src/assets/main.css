@@ -1624,6 +1624,40 @@ button {
   -webkit-backdrop-filter: blur(2px);
 }
 
+/* Dialog konfirmasi hapus sesi */
+.confirm-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 320px;
+  padding: 24px;
+  background: var(--paper);
+  border: 1px solid var(--ash);
+  border-radius: var(--radius);
+  box-shadow: 0 20px 50px rgb(0 0 0 / 0.18);
+}
+
+.confirm-dialog__title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--carbon);
+}
+
+.confirm-dialog__text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--slate);
+}
+
+.confirm-dialog__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
 .session-edit {
   display: flex;
   flex-direction: column;
@@ -1676,6 +1710,55 @@ button {
   border: 1px solid var(--ash);
   border-radius: var(--radius);
   outline: none;
+}
+
+/* Input waktu bersegmen (HH : MM : SS) — sel selalu terisi,
+   gayanya menyatu dengan kartu: transparan + garis bawah halus,
+   fokus = garis bawah ember */
+.time-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  width: 100%;
+  height: 38px;
+  padding: 0 10px;
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--ash);
+  border-radius: var(--radius);
+  box-sizing: border-box;
+  font-variant-numeric: tabular-nums;
+}
+
+.time-input:focus-within {
+  border-color: var(--ember);
+}
+
+.session-edit .time-input__cell,
+.time-input__cell {
+  width: 2.1em;
+  padding: 0;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  height: auto;
+}
+
+.time-input__cell:focus {
+  border-bottom-color: var(--ember);
+  border-color: var(--ember);
+  border-bottom-color: var(--ember);
+}
+
+.time-input__sep {
+  color: var(--ash);
+  line-height: 1;
 }
 
 .session-edit input:focus,
@@ -2031,41 +2114,70 @@ button {
 /* ---------- Grid timeline harian (per 10 menit) ---------- */
 
 .charts-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 48px;
+  --card-border: 1px solid var(--fog);
+  --card-bg: rgb(255 255 255 / 0.55);
+  --card-radius: var(--radius);
+  --card-pad: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: stretch;
 }
 
 .charts-row > * {
   min-width: 0;
 }
 
-.charts-row .history-radar {
-  flex: 1 1 auto;
-  align-self: center;
+/* Kartu bersama radar & timeline — nilai visual satu sumber agar identik */
+.history-card {
+  border: var(--card-border);
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
+  padding: var(--card-pad);
+  box-sizing: border-box;
+  min-height: 0;
 }
 
-.charts-row .day-grid {
-  flex: 0 0 auto;
-  width: min(320px, 44%);
+/* Kartu radar: isi dipusatkan vertikal & horizontal di dalam kartunya */
+.history-radar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 0;
+}
+
+/* Kartu timeline: mengikuti lebar kartu, tengah horizontal,
+   24 baris digulir vertikal di dalam kartu (tidak memotong grid) */
+.history-timeline {
+  display: flex;
+  box-sizing: border-box;
+  min-height: 0;
+}
+
+.history-timeline .day-grid {
+  width: min(160px, 100%);
+  max-height: 360px;
+  margin: 0 auto;
 }
 
 /* Grid timeline harian — garis sel, kolom & label dari SATU sumber:
    garis vertikal = border-left tiap .tl-cell, garis horizontal =
    border-top tiap .tl-row; grid ditutup border-right/bottom terakhir.
-   Semua 1px, sangat samar (#EDEDF3), box-sizing border-box. */
+   Semua 1px, sangat samar (#EDEDF3), box-sizing border-box.
+   Sel berbentuk kotak (rasio 1:1 mengikuti lebar kolom saat ini),
+   24 baris digulir vertikal di dalam kotaknya sendiri. */
 .day-grid {
-  --tl-line: #ededf3;
-  --row-h: 17px;
+  --tl-line: var(--fog);
   width: 100%;
-  height: calc(24 * var(--row-h));
+  overflow-y: auto;
   box-sizing: border-box;
 }
 
 .tl-row {
   display: grid;
   grid-template-columns: 34px repeat(6, 1fr);
-  height: var(--row-h);
   box-sizing: border-box;
   border-top: 1px solid var(--tl-line);
 }
@@ -2088,7 +2200,8 @@ button {
 .tl-cell {
   position: relative;
   display: block;
-  height: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
   border: 0;
   border-left: 1px solid var(--tl-line);
   border-radius: 0;
@@ -2106,6 +2219,7 @@ button {
   top: 0;
   bottom: 0;
   display: block;
+  /* mengikuti warna branding dot */
   background: var(--ember);
   border-radius: 0;
   box-sizing: border-box;
@@ -2113,7 +2227,7 @@ button {
 }
 
 .tl-cell__fill + .tl-cell__fill {
-  border-left: 1px solid #ededf3;
+  border-left: 1px solid var(--fog);
 }
 
 .panel__head h2 {
@@ -2165,12 +2279,7 @@ button {
   border-radius: 2px;
 }
 
-.history-radar {
-  padding: 8px 8px 12px;
-  background: rgb(255 255 255 / 0.55);
-  border: 1px solid var(--fog);
-  border-radius: var(--radius);
-}
+/* Kartu visual radar & timeline berasal dari .history-card (satu sumber) */
 
 .day-nav {
   display: inline-flex;
@@ -2197,6 +2306,10 @@ button {
 
 .history-radar__chart {
   width: min(232px, 68vw);
+  /* wadah persis persegi mengikuti lebar svg — agar teks total jam &
+     total sesi di .ring__content ter-centang vertikal di tengah diagram */
+  height: auto;
+  aspect-ratio: 1 / 1;
   margin: 0 auto;
 }
 
@@ -2663,17 +2776,12 @@ button {
 /* Mobile landscape & large phones */
 @media (max-width: 720px) {
   .charts-row {
-    flex-direction: column;
-    gap: 32px;
+    grid-template-columns: 1fr;
+    gap: 24px;
   }
 
-  .charts-row .day-grid {
+  .charts-row > * {
     width: 100%;
-    max-width: none;
-  }
-
-  .charts-row .history-radar {
-    align-self: stretch;
   }
 
   .topnav {
